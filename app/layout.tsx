@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Outreach Command Center",
   description: "Research, review and approve high-quality client outreach.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
