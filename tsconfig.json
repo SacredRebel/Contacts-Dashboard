@@ -39,9 +39,14 @@
   ],
   "exclude": [
     "node_modules",
-    "examples",
-    "db",
-    "build",
-    "scripts"
+    "examples/**",
+    "db/**",
+    "build/**",
+    "scripts/**",
+    "hooks/**",
+    "components/ui/**",
+    "cloudflare-env.d.ts",
+    "drizzle.config.ts",
+    "vite.config.ts"
   ]
 }
