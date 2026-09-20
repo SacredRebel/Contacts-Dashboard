@@ -30,6 +30,15 @@ function nullableText(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
+function websiteKey(value: string) {
+  if (!value.trim()) return "";
+  try {
+    return new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return value.trim().toLowerCase().replace(/\/+$/, "");
+  }
+}
+
 function normalize(raw: Record<string, unknown>): Opportunity {
   const now = new Date().toISOString();
   const status = validStatuses.has(raw.status as OpportunityStatus)
@@ -42,6 +51,9 @@ function normalize(raw: Record<string, unknown>): Opportunity {
     website: text(raw.website),
     location: text(raw.location),
     industry: text(raw.industry),
+    portfolioTool: text(raw.portfolioTool),
+    demoUrl: text(raw.demoUrl),
+    campaign: text(raw.campaign),
     contactName: text(raw.contactName, "Business team"),
     contactRole: text(raw.contactRole),
     contactEmail: text(raw.contactEmail),
@@ -52,7 +64,7 @@ function normalize(raw: Record<string, unknown>): Opportunity {
     fit: ["BEST FIT", "GOOD FIT", "EXPERIMENT"].includes(text(raw.fit))
       ? (text(raw.fit) as Opportunity["fit"])
       : "GOOD FIT",
-    score: Math.max(0, Math.min(100, Number(raw.score ?? 50))),
+    score: Number.isFinite(Number(raw.score)) ? Math.max(0, Math.min(100, Number(raw.score))) : 50,
     status,
     signalType: text(raw.signalType, "Research opportunity"),
     signalSummary: text(raw.signalSummary),
@@ -97,11 +109,12 @@ export function loadOpportunities(): Opportunity[] {
   try {
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) throw new Error("Saved outreach data is not an array.");
+    if (parsed.some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
+      throw new Error("Saved outreach data contains an invalid record.");
+    }
     return parsed.map((item) => normalize(item)).sort((a, b) => b.score - a.score);
   } catch {
-    const seeded = seededOpportunities();
-    saveOpportunities(seeded);
-    return seeded;
+    throw new Error("Saved research could not be read. It has been kept intact; recover your backup before importing more.");
   }
 }
 
@@ -114,29 +127,44 @@ export function importOpportunities(
   current: Opportunity[],
   incoming: unknown[],
 ): { opportunities: Opportunity[]; created: Opportunity[]; skipped: number } {
+  if (!Array.isArray(incoming) || incoming.length > 500) {
+    throw new Error("Choose a JSON array containing no more than 500 opportunities.");
+  }
   const knownNames = new Set(current.map((item) => item.businessName.trim().toLowerCase()));
   const knownWebsites = new Set(
-    current.map((item) => item.website.trim().toLowerCase()).filter(Boolean),
+    current.map((item) => websiteKey(item.website)).filter(Boolean),
   );
+  const knownEmails = new Set(current.map((item) => item.contactEmail.trim().toLowerCase()).filter(Boolean));
+  const knownIds = new Set(current.map((item) => item.id));
   const created: Opportunity[] = [];
   let skipped = 0;
 
-  for (const raw of incoming.slice(0, 50)) {
-    if (!raw || typeof raw !== "object") continue;
+  for (const raw of incoming) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || !text((raw as Record<string, unknown>).businessName).trim()) {
+      skipped += 1;
+      continue;
+    }
     const candidate = normalize(raw as Record<string, unknown>);
     const name = candidate.businessName.trim().toLowerCase();
-    const website = candidate.website.trim().toLowerCase();
+    const website = websiteKey(candidate.website);
+    const email = candidate.contactEmail.trim().toLowerCase();
 
-    if (knownNames.has(name) || (website && knownWebsites.has(website))) {
+    if (knownNames.has(name) || (website && knownWebsites.has(website)) || (email && knownEmails.has(email)) || knownIds.has(candidate.id)) {
       skipped += 1;
       continue;
     }
 
     candidate.status = "review";
+    candidate.approvedAt = null;
+    candidate.sentAt = null;
+    candidate.repliedAt = null;
+    candidate.nextFollowUpAt = null;
     candidate.updatedAt = new Date().toISOString();
     created.push(candidate);
     knownNames.add(name);
     if (website) knownWebsites.add(website);
+    if (email) knownEmails.add(email);
+    knownIds.add(candidate.id);
   }
 
   const opportunities = [...created, ...current].sort((a, b) => b.score - a.score);

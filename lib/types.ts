@@ -14,6 +14,9 @@ export type Opportunity = {
   website: string;
   location: string;
   industry: string;
+  portfolioTool?: string;
+  demoUrl?: string;
+  campaign?: string;
   contactName: string;
   contactRole: string;
   contactEmail: string;

@@ -2,6 +2,18 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 
+.tool-filter {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d8dfd1;
+  border-radius: 8px;
+  background: #fff;
+  color: #24382e;
+  font: inherit;
+}
+
 @utility scrollbar-thin {
   scrollbar-width: thin;
 }

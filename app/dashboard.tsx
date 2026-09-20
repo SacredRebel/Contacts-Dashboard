@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight, Check, ChevronRight, CircleAlert, Clock3, Download, ExternalLink,
   FilePenLine, Inbox, Mail, MessageSquareReply, RefreshCw, Search, Send,
-  ShieldCheck, Sparkles, Target, WifiOff,
+  ShieldCheck, Sparkles, Target, Upload, WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,28 @@ export function Dashboard() {
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
   const [today, setToday] = useState("Today");
+  const [portfolioTool, setPortfolioTool] = useState("all");
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const importFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size > 5_000_000) throw new Error("Choose a research file smaller than 5 MB.");
+      const incoming = JSON.parse(await file.text());
+      const current = loadOpportunities();
+      const result = importOpportunities(current, incoming);
+      setOpportunities(result.opportunities);
+      setSelectedId(result.created[0]?.id ?? result.opportunities[0]?.id ?? "");
+      setFilter("review");
+      setQuery("");
+      setPortfolioTool("all");
+      toast.success(`${result.created.length} drafts imported`, { description: `${result.skipped} duplicate or invalid records skipped. Nothing approved or sent.` });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not import this research file.");
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -169,7 +191,7 @@ export function Dashboard() {
           type: "object",
           properties: {
             opportunities: {
-              type: "array", maxItems: 50,
+              type: "array", maxItems: 500,
               items: {
                 type: "object",
                 properties: { businessName: { type: "string" }, website: { type: "string" } },
@@ -217,16 +239,16 @@ export function Dashboard() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return opportunities.filter((item) => {
-      const text = [item.businessName, item.industry, item.location, item.offerTitle, item.signalType].join(" ").toLowerCase();
+      const text = [item.businessName, item.industry, item.location, item.offerTitle, item.signalType, item.portfolioTool, item.campaign].join(" ").toLowerCase();
       const matchesFilter = filter === "all"
         || (filter === "ready" && isReady(item) && ["review", "needs_edit"].includes(item.status))
         || (filter === "review" && ["research", "review", "needs_edit"].includes(item.status))
         || (filter === "approved" && item.status === "approved")
         || (filter === "sent" && ["sent", "replied", "won"].includes(item.status))
         || (filter === "replied" && ["replied", "won"].includes(item.status));
-      return (!needle || text.includes(needle)) && matchesFilter;
+      return (!needle || text.includes(needle)) && matchesFilter && (portfolioTool === "all" || item.portfolioTool === portfolioTool);
     });
-  }, [filter, opportunities, query]);
+  }, [filter, opportunities, query, portfolioTool]);
 
   const metrics = useMemo(() => ({
     researched: opportunities.length,
@@ -257,7 +279,7 @@ export function Dashboard() {
 
   const saveEdit = async () => {
     if (!selected) return;
-    await patchOpportunity(selected.id, { subject, emailBody: body, reviewerNote: note, status: "needs_edit" });
+    await patchOpportunity(selected.id, { subject, emailBody: body, reviewerNote: note, status: "needs_edit", approvedAt: null });
     setEditing(false);
     toast.success("Edit request saved", { description: "The opportunity is marked for another writing pass." });
   };
@@ -275,8 +297,8 @@ export function Dashboard() {
         </nav>
         <div className="side-card">
           <div className="side-card-head"><Sparkles /><span>Daily research</span></div>
-          <strong>10 opportunities/day</strong><p>Research, evidence, angle and a review-ready email.</p>
-          <div className="next-run"><Clock3 />Next run · 8:00 AM</div>
+          <strong>Your review queue</strong><p>Import researched batches, compare offers and approve each draft.</p>
+          <div className="next-run"><Clock3 />Sending requires your approval</div>
         </div>
         <div className="sidebar-foot"><button onClick={() => downloadOpportunities(opportunities)}><Download />Export backup</button><span>Saved in this browser</span></div>
       </aside>
@@ -285,6 +307,8 @@ export function Dashboard() {
         <header className="topbar">
           <div><p className="eyebrow">{today}</p><h1>Research inbox</h1></div>
           <div className="top-actions">
+            <input ref={fileInput} type="file" accept=".json,application/json" hidden aria-label="Import research JSON" onChange={(event) => void importFile(event.target.files?.[0])} />
+            <Button variant="outline" onClick={() => fileInput.current?.click()}><Upload />Import research</Button>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" className="connection-button"><WifiOff />Gmail disconnected</Button></DialogTrigger>
               <DialogContent className="connect-dialog">
@@ -303,7 +327,7 @@ export function Dashboard() {
         </header>
 
         <section className="metrics" aria-label="Outreach metrics">
-          <Metric label="Researched" value={metrics.researched} note="current test set" />
+          <Metric label="Researched" value={metrics.researched} note="saved opportunities" />
           <Metric label="Ready" value={metrics.ready} note="all hard gates pass" accent />
           <Metric label="Needs review" value={metrics.review} note="your decision" />
           <Metric label="Approved" value={metrics.approved} note="safe send queue" />
@@ -315,6 +339,10 @@ export function Dashboard() {
           <div className="queue-panel">
             <div className="queue-tools">
               <div className="search-box"><Search /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search businesses, niches, offers…" /></div>
+              <select aria-label="Filter by portfolio tool" value={portfolioTool} onChange={(event) => setPortfolioTool(event.target.value)} className="tool-filter">
+                <option value="all">All portfolio tools</option>
+                {[...new Set(opportunities.map((item) => item.portfolioTool).filter((tool): tool is string => Boolean(tool)))].sort().map((tool) => <option key={tool} value={tool}>{tool}</option>)}
+              </select>
               <div className="filters" aria-label="Filter opportunities">
                 {(["all", "ready", "review", "approved", "sent", "replied"] as Filter[]).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}
               </div>
