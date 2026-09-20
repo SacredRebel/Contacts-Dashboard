@@ -263,8 +263,9 @@ export function Dashboard() {
   };
 
   return (
-    <div className="app-shell">
+    <>
       <Toaster position="bottom-right" richColors />
+      <div className="app-shell">
       <aside className="sidebar">
         <div className="brand-lockup"><div className="brand-mark">PM</div><div><strong>Outreach</strong><span>Command center</span></div></div>
         <nav className="side-nav" aria-label="Dashboard sections">
@@ -393,7 +394,8 @@ export function Dashboard() {
           </section>
         </section>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 
