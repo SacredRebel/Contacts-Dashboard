@@ -4,15 +4,16 @@ A focused research and approval dashboard for turning business research into tho
 
 ## What works now
 
-- Review 10 preloaded prospect opportunities
-- Search and filter the research inbox
+- Review 95 deduplicated contact records, including the ranked 50-lead Monday queue
+- Search and filter by portfolio lane, niche, business, person or email
 - Inspect evidence, observations and inferences separately
 - Run a nine-point quality gate before approval
 - Edit subjects, email drafts and reviewer notes
 - Approve only drafts that pass every hard gate
-- Track researched, ready, approved, sent and replied counts
-- Prevent duplicate business names and websites during imports
-- Export the complete workspace as a JSON backup
+- Track approvals, manual sends, replies, meetings, opt-outs and paid work
+- Compare outcome counts by portfolio lane and niche
+- Prevent duplicate IDs, business names, parent groups, websites and emails during imports
+- Export the complete workspace as JSON or a spreadsheet-ready CSV
 - Keep all changes in the current browser with `localStorage`
 
 Gmail is deliberately disconnected. Approving a draft adds it to the safe send queue; it does not send email.
@@ -51,7 +52,7 @@ Important consequences:
 
 - Use the **Export backup** button regularly.
 - Data does not automatically appear on another browser or device.
-- Clearing site data resets the browser copy to the included sample opportunities.
+- Clearing site data resets the browser copy to the included reviewed research snapshot.
 - A public Vercel deployment can be opened by anyone with the URL, although each browser has its own local copy.
 
 Before loading private client data, enable Vercel deployment protection or add application authentication.

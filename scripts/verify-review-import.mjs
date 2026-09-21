@@ -33,7 +33,7 @@ assert.equal(store.importOpportunities(imported.opportunities, [fresh]).created.
 
 const large = Array.from({ length: 55 }, (_, i) => ({ id: `batch-${i}`, businessName: `Business ${i}` }));
 assert.equal(store.importOpportunities([], large).created.length, 55, 'do not silently truncate after 50');
-assert.throws(() => store.importOpportunities([], Array(501).fill({ businessName: 'Too many' })));
+assert.throws(() => store.importOpportunities([], Array(2001).fill({ businessName: 'Too many' })));
 assert.throws(() => store.importOpportunities([], { opportunities: [] }));
 const key = 'pauls-outreach-command-center:v1';
 storage.setItem(key, '{broken');

@@ -5,6 +5,9 @@ export type OpportunityStatus =
   | "approved"
   | "sent"
   | "replied"
+  | "meeting"
+  | "bounced"
+  | "not_interested"
   | "won"
   | "archived";
 
@@ -44,4 +47,33 @@ export type Opportunity = {
   nextFollowUpAt: string | null;
   createdAt: string;
   updatedAt: string;
+  niche?: string;
+  parentGroup?: string;
+  sourceCheckedAt?: string;
+  reviewRank?: number | null;
+  researchBatch?: string;
+  holdReason?: string;
+  doNotContact?: boolean;
+  draftKind?: "initial" | "follow_up";
+  approvedSnapshot?: string | null;
+  lastSentSnapshot?: string | null;
+  replyOutcome?: "positive" | "neutral" | "negative" | null;
+  meetingAt?: string | null;
+  depositAmount?: number | null;
+  notes?: string;
+  activity?: Activity[];
+};
+
+export type Activity = {
+  id: string;
+  type: "note" | "approved" | "edited" | "sent" | "reply" | "meeting" | "deposit" | "opt_out" | "bounced" | "follow_up";
+  at: string;
+  note: string;
+  amount?: number;
+  outcome?: "positive" | "neutral" | "negative";
+};
+
+export type WorkspaceSettings = {
+  senderEmail: string;
+  dailyReviewTarget: number;
 };
