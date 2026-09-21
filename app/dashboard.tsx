@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight, BarChart3, BriefcaseBusiness, Check, CheckCircle2, ChevronRight,
   CircleAlert, ClipboardCheck, Clock3, Copy, Download, ExternalLink, FilePenLine,
-  Filter, Inbox, Mail, Menu, MessageSquareReply, RefreshCw, Search, Send,
-  ShieldCheck, Sparkles, Target, Upload, WifiOff, X,
+  Filter, Inbox, Mail, MessageSquareReply, RefreshCw, Search, Send,
+  ShieldCheck, Sparkles, Target, Upload, WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,6 @@ export function Dashboard() {
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
-  const [mobileNav, setMobileNav] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -244,17 +243,15 @@ export function Dashboard() {
   const selectView = (next: View) => {
     setView(next);
     setFilter(next === "inbox" ? "monday" : "all");
-    setMobileNav(false);
   };
 
   return (
     <div className="app-shell">
       <Toaster position="bottom-right" richColors />
-      <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
+      <header className="app-nav">
         <div className="brand-lockup">
           <div className="brand-mark">PM</div>
           <div><strong>Outreach OS</strong><span>Paul&apos;s client pipeline</span></div>
-          <button className="close-nav" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X /></button>
         </div>
         <nav className="side-nav" aria-label="Dashboard sections">
           <NavButton active={view === "inbox"} onClick={() => selectView("inbox")} icon={<Inbox />} label="Review inbox" count={metrics.review} />
@@ -262,23 +259,16 @@ export function Dashboard() {
           <NavButton active={view === "replies"} onClick={() => selectView("replies")} icon={<MessageSquareReply />} label="Replies" count={metrics.replies} />
           <NavButton active={view === "analytics"} onClick={() => selectView("analytics")} icon={<BarChart3 />} label="Performance" />
         </nav>
-        <div className="side-card">
-          <div><Sparkles /><span>Monday queue</span></div>
-          <strong>{metrics.monday} reviewed leads</strong>
-          <p>Every draft needs your approval. Approval stages it; it does not send it.</p>
-          <span className="safe-line"><ShieldCheck /> Manual control stays on</span>
+        <div className="nav-actions">
+          <span className="queue-chip"><strong>{metrics.monday}</strong> Monday leads</span>
+          <button onClick={() => downloadOpportunities(opportunities)} title="Download workspace backup"><Download /><span>Backup</span></button>
+          <button onClick={() => downloadFile("outreach-contacts.csv", csvExport(opportunities), "text/csv")} title="Export contacts as CSV"><Download /><span>CSV</span></button>
         </div>
-        <div className="sidebar-foot">
-          <button onClick={() => downloadOpportunities(opportunities)}><Download />Workspace backup</button>
-          <button onClick={() => downloadFile("outreach-contacts.csv", csvExport(opportunities), "text/csv")}><Download />Export CSV</button>
-          <span>Saved privately in this browser</span>
-        </div>
-      </aside>
+      </header>
 
       <main className="workspace">
         <header className="topbar">
           <div className="title-line">
-            <button className="menu-button" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu /></button>
             <div><p>CLIENT ACQUISITION / {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date()).toUpperCase()}</p><h1>{view === "inbox" ? "Review inbox" : view === "pipeline" ? "Outreach pipeline" : view === "replies" ? "Reply center" : "Campaign performance"}</h1></div>
           </div>
           <div className="top-actions">
