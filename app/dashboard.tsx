@@ -1538,14 +1538,24 @@ function NetworkView({
   contacts: RelationshipContact[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [relationFilter, setRelationFilter] = useState("all");
   const connections = contacts.flatMap((contact) => contact.connections.map((connection) => ({
     source: contact,
     target: contacts.find((item) => item.id === connection.contactId),
     connection,
   }))).filter((row) => row.target);
-  const connectedIds = new Set(connections.flatMap((row) => [row.source.id, row.target?.id || ""]));
+  const relationTypes = [...new Set(connections.map((row) => row.connection.relationship))].sort();
+  const visibleConnections = relationFilter === "all"
+    ? connections
+    : connections.filter((row) => row.connection.relationship === relationFilter);
+  const connectedIds = new Set(visibleConnections.flatMap((row) => [row.source.id, row.target?.id || ""]));
   const top = contacts
-    .map((contact) => ({ contact, count: contact.connections.length + connections.filter((row) => row.target?.id === contact.id).length }))
+    .map((contact) => ({
+      contact,
+      count:
+        visibleConnections.filter((row) => row.source.id === contact.id).length +
+        visibleConnections.filter((row) => row.target?.id === contact.id).length,
+    }))
     .filter((row) => row.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
@@ -1553,6 +1563,14 @@ function NetworkView({
   return (
     <div className="page-view">
       <PageHero icon={<Network />} eyebrow="NETWORK INTELLIGENCE" title="Relationship graph" text="Track introductions, representation and referral paths instead of treating every person as an isolated row." />
+      <div className="page-filterbar compact">
+        <Network />
+        <select value={relationFilter} onChange={(event) => setRelationFilter(event.target.value)}>
+          <option value="all">All connection types</option>
+          {relationTypes.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+        </select>
+        <span><strong>{visibleConnections.length}</strong> connections</span>
+      </div>
       <div className="network-grid">
         <section className="network-map">
           <div className="network-center"><Network /><strong>{connectedIds.size}</strong><span>connected contacts</span></div>
@@ -1566,18 +1584,18 @@ function NetworkView({
               </button>
             );
           })}
-          {!top.length ? <div className="network-empty">Add connections from contact records to build the graph.</div> : null}
+          {!top.length ? <div className="network-empty">No connections match this filter yet.</div> : null}
         </section>
         <section className="network-edges">
-          <div className="page-card-head"><span>Connection log</span><strong>{connections.length}</strong></div>
-          {connections.slice(0, 50).map(({ source, target, connection }) => target ? (
+          <div className="page-card-head"><span>Connection log</span><strong>{visibleConnections.length}</strong></div>
+          {visibleConnections.slice(0, 50).map(({ source, target, connection }) => target ? (
             <button key={connection.id} onClick={() => onOpen(source)}>
               <span className={"pipeline-avatar mini " + source.pipeline}>{initials(source.name)}</span>
               <span><strong>{source.name}</strong><small>{connection.relationship.replaceAll("_", " ")} → {target.name}</small></span>
               <ChevronRight />
             </button>
           ) : null)}
-          {!connections.length ? <EmptyMini icon={<Network />} title="No links yet" text="When someone introduces another person, save the connection once and keep it forever." /> : null}
+          {!visibleConnections.length ? <EmptyMini icon={<Network />} title="No links match" text="Change the relationship filter or add a connection from a contact record." /> : null}
         </section>
       </div>
     </div>
