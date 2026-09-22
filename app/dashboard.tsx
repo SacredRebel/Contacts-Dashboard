@@ -1609,18 +1609,38 @@ function ActivityView({
   rows: { contact: RelationshipContact; interaction: Interaction }[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [activityMember, setActivityMember] = useState<"all" | TeamMemberId>("all");
+  const [activityType, setActivityType] = useState<"all" | Interaction["type"]>("all");
+  const types = [...new Set(rows.map(({ interaction }) => interaction.type))].sort();
+  const visible = rows.filter(({ interaction }) =>
+    (activityMember === "all" || interaction.userId === activityMember) &&
+    (activityType === "all" || interaction.type === activityType),
+  );
+
   return (
     <div className="page-view">
       <PageHero icon={<Activity />} eyebrow="AUDITABLE HISTORY" title="Team activity" text="Every important relationship update is timestamped and attributed by color." />
+      <div className="page-filterbar compact">
+        <Activity />
+        <select value={activityMember} onChange={(event) => setActivityMember(event.target.value as "all" | TeamMemberId)}>
+          <option value="all">All team members</option>
+          {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => <option key={id} value={id}>{TEAM_MEMBERS[id].name}</option>)}
+        </select>
+        <select value={activityType} onChange={(event) => setActivityType(event.target.value as "all" | Interaction["type"])}>
+          <option value="all">All activity types</option>
+          {types.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> events</span>
+      </div>
       <section className="activity-page-list">
-        {rows.slice(0, 200).map(({ contact, interaction }) => (
+        {visible.slice(0, 200).map(({ contact, interaction }) => (
           <button key={interaction.id} onClick={() => onOpen(contact)}>
             <i style={{ background: TEAM_MEMBERS[interaction.userId].color }} />
             <span><strong>{interaction.summary}</strong><small>{TEAM_MEMBERS[interaction.userId].name} · {contact.name} · {contact.organization} · {prettyDate(interaction.at, true)}</small></span>
             <ChevronRight />
           </button>
         ))}
-        {!rows.length ? <EmptyMini icon={<Activity />} title="No activity yet" text="Calls, notes, tasks, documents and stage changes will appear here." /> : null}
+        {!visible.length ? <EmptyMini icon={<Activity />} title="No activity matches" text="Change the team-member or activity-type filter." /> : null}
       </section>
     </div>
   );
