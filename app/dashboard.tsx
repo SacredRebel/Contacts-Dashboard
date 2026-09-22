@@ -842,6 +842,16 @@ export function Dashboard() {
                       <option value="all">All stages</option>
                       {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
                     </select>
+                    <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)}>
+                      <option value="all">All queues</option>
+                      <option value="due_today">Due today</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="assigned_to_me">Assigned to me</option>
+                      <option value="high_priority">High priority</option>
+                      <option value="direct_capital">Direct capital</option>
+                      <option value="intermediary">Intermediaries</option>
+                      <option value="dormant">Dormant</option>
+                    </select>
                   </div>
                   <div className="list-summary"><strong>{filtered.length}</strong> contacts</div>
                 </div>
@@ -931,6 +941,16 @@ export function Dashboard() {
                 <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
                   <option value="all">All stages</option>
                   {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                </select>
+                <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)}>
+                  <option value="all">All queues</option>
+                  <option value="due_today">Due today</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="assigned_to_me">Assigned to me</option>
+                  <option value="high_priority">High priority</option>
+                  <option value="direct_capital">Direct capital</option>
+                  <option value="intermediary">Intermediaries</option>
+                  <option value="dormant">Dormant</option>
                 </select>
               </div>
             </div>
