@@ -206,3 +206,17 @@ button.primary:hover { background: #2d503c; }
 .outreach-row.approved { background: linear-gradient(90deg, rgba(233,246,237,.7), #fff 34%); }
 .outreach-row.approved > p { border-left-color: #8fb59a; }
 .approve-draft { border-color: #bfd8c6 !important; background: #f1f9f3 !important; color: #2f6f4c !important; }
+
+.outreach-side { display: grid; gap: 12px; align-content: start; }
+.ready-draft-list { max-height: 360px; overflow-y: auto; }
+.ready-draft-list > div { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #edf0ed; }
+.ready-draft-list > div > button:first-child { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 8px; align-items: center; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; }
+.ready-draft-list strong, .ready-draft-list small { display: block; }
+.ready-draft-list strong { font-size: 9px; color: #46544b; }
+.ready-draft-list small { margin-top: 2px; overflow: hidden; color: #8a958e; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.ready-draft-list > div > button.secondary { min-height: 30px; padding: 0 8px; font-size: 7px; font-weight: 850; border-radius: 8px; }
+
+@media (max-width: 560px) {
+  .ready-draft-list > div { grid-template-columns: 1fr; }
+  .ready-draft-list > div > button.secondary { width: 100%; }
+}
