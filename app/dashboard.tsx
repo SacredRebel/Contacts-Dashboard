@@ -795,6 +795,31 @@ export function Dashboard() {
     toast.success("Day 0 draft added to Outreach");
   };
 
+  const createFollowupOutreachDraft = (contact: RelationshipContact, touch: 3 | 10) => {
+    const existing = contact.documents.some(
+      (document) => document.type === "email" && !document.sentAt && emailTouch(document) === touch,
+    );
+    if (existing) {
+      toast.info("That follow-up already has a draft in Outreach.");
+      return;
+    }
+    const draft = draftEmail(contact, touch);
+    const document = makeDocument(
+      "Follow-up Day " + touch + " — " + contact.name,
+      "email",
+      "internal",
+      member,
+      "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+    );
+    mutateContact(contact.id, (item) => ({
+      ...item,
+      nextAction: "Review and send Day " + touch + " follow-up",
+      documents: [...item.documents, document],
+      interactions: [...item.interactions, makeInteraction(member, "document", "Created Day " + touch + " outreach follow-up draft.")],
+    }));
+    toast.success("Day " + touch + " draft added to Outreach");
+  };
+
   const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
     const parts = emailDocumentParts(document);
     setSelectedId(contact.id);
@@ -1075,6 +1100,7 @@ export function Dashboard() {
               sent={sentEmails}
               onOpen={openContact}
               onCreateDraft={createInitialOutreachDraft}
+              onCreateFollowup={createFollowupOutreachDraft}
               onEdit={editQueuedEmail}
               onApprove={approveQueuedEmail}
               onOpenEmail={openQueuedEmail}
@@ -1606,6 +1632,7 @@ function OutreachView({
   sent,
   onOpen,
   onCreateDraft,
+  onCreateFollowup,
   onEdit,
   onApprove,
   onOpenEmail,
@@ -1616,6 +1643,7 @@ function OutreachView({
   sent: { contact: RelationshipContact; document: ContactDocument }[];
   onOpen: (contact: RelationshipContact) => void;
   onCreateDraft: (contact: RelationshipContact) => void;
+  onCreateFollowup: (contact: RelationshipContact, touch: 3 | 10) => void;
   onEdit: (contact: RelationshipContact, document: ContactDocument) => void;
   onApprove: (contactId: string, documentId: string) => void;
   onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
@@ -1628,6 +1656,17 @@ function OutreachView({
     .filter((contact) => !contact.documents.some((document) => document.type === "email"))
     .sort((a, b) => (b.priority === "A" ? 2 : b.priority === "B" ? 1 : 0) - (a.priority === "A" ? 2 : a.priority === "B" ? 1 : 0) || b.score - a.score)
     .slice(0, 30);
+
+  const dueFollowups = contacts.flatMap((contact) =>
+    contact.tasks
+      .filter((task) => !["done", "canceled"].includes(task.status) && isDue(task.dueAt) && /outreach follow-up: day (3|10)/i.test(task.title))
+      .map((task) => ({
+        contact,
+        task,
+        touch: /day 10/i.test(task.title) ? 10 as const : 3 as const,
+      })),
+  ).filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline)
+    .sort((a, b) => (a.task.dueAt || "").localeCompare(b.task.dueAt || ""));
 
   return (
     <div className="page-view">
@@ -1682,6 +1721,22 @@ function OutreachView({
         </section>
 
         <div className="outreach-side">
+          <section className="outreach-card followup-card">
+            <div className="page-card-head"><span>Follow-ups due</span><strong>{dueFollowups.length}</strong></div>
+            <div className="ready-draft-list">
+              {dueFollowups.map(({ contact, task, touch }) => (
+                <div key={task.id}>
+                  <button onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>Day {touch} · {task.dueAt ? prettyDate(task.dueAt) : "Due now"}</small></span>
+                  </button>
+                  <button className="secondary" onClick={() => onCreateFollowup(contact, touch)}>Draft Day {touch}</button>
+                </div>
+              ))}
+              {!dueFollowups.length ? <EmptyMini icon={<CheckCircle2 />} title="No follow-ups due" text="Day 3 and Day 10 tasks appear here automatically after sends are logged." /> : null}
+            </div>
+          </section>
+
           <section className="outreach-card">
             <div className="page-card-head"><span>Ready to draft</span><strong>{readyToDraft.length}</strong></div>
             <div className="ready-draft-list">
