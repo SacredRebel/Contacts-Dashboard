@@ -181,8 +181,10 @@ export function reconcileSnapshot(current: Opportunity[], seeds: unknown[] = sna
 
     const live = result[index];
     const next = { ...seed, ...live };
-    const migrateToThreeRoleProduct = seed.campaign === "Client–Crew–Office first-send"
-      && live.portfolioTool === "Work Logger"
+    const migrateToThreeRoleProduct = seed.campaign === "Client–Crew–Office interest-CTA-v2"
+      && (live.portfolioTool === "Work Logger"
+        || (live.portfolioTool === "Client–Crew–Office Platform"
+          && live.campaign === "Client–Crew–Office first-send"))
       && !live.sentAt
       && !live.repliedAt
       && !live.approvedAt;
