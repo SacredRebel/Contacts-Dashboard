@@ -347,8 +347,7 @@ export function Dashboard() {
     const task = makeTask(
       title.trim(),
       assignedTo,
-      member,
-      due && !Number.isNaN(Date.parse(due)) ? new Date(due + "T17:00:00").toISOString() : null,
+          due && !Number.isNaN(Date.parse(due)) ? new Date(due + "T17:00:00").toISOString() : null,
     );
     mutateContact(selected.id, (contact) => ({
       ...contact,
@@ -781,12 +780,10 @@ export function Dashboard() {
                   <ContactDetail
                     contact={selected}
                     contacts={contacts}
-                    member={member}
                     filtered={filtered}
                     onSelect={setSelectedId}
                     onStage={updateStage}
                     onPatch={(changes) => patchContact(selected.id, changes)}
-                    onMutate={(transform) => mutateContact(selected.id, transform)}
                     onVoice={startVoice}
                     onComplete={completePrimaryAction}
                     onTask={addTask}
@@ -1038,7 +1035,6 @@ function ContactDetail({
   onSelect,
   onStage,
   onPatch,
-  onMutate,
   onVoice,
   onComplete,
   onTask,
@@ -1049,12 +1045,10 @@ function ContactDetail({
 }: {
   contact: RelationshipContact;
   contacts: RelationshipContact[];
-  member: TeamMemberId;
   filtered: RelationshipContact[];
   onSelect: (id: string) => void;
   onStage: (stage: RelationshipStage) => void;
   onPatch: (changes: Partial<RelationshipContact>) => void;
-  onMutate: (transform: (contact: RelationshipContact) => RelationshipContact) => void;
   onVoice: () => void;
   onComplete: () => void;
   onTask: () => void;
