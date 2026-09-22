@@ -339,7 +339,12 @@
   .quick-actions .complete-action { margin-left: 0; }
   .quick-actions svg { width: 14px; }
 
-  .detail-body { padding: 7px; }
+  .detail-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 7px;
+  }
   .detail-body > section {
     margin-bottom: 7px;
     padding: 13px;
