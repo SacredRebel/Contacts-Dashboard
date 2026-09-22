@@ -140,3 +140,28 @@ button.primary:hover { background: #2d503c; }
 .contact-browser-list strong, .contact-browser-list small { display: block; }
 .contact-browser-list strong { overflow: hidden; color: #435047; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .contact-browser-list small { margin-top: 3px; overflow: hidden; color: #8a958e; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* Page-level library / graph / activity filters */
+.page-filterbar {
+  display: grid;
+  grid-template-columns: minmax(240px,1fr) minmax(150px,220px) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+.page-filterbar.compact { grid-template-columns: 22px minmax(160px,240px) minmax(160px,240px) auto; }
+.page-filterbar.compact > svg { width: 16px; color: #61766a; }
+.page-filterbar select { width: 100%; min-height: 37px; padding: 0 9px; color: #5f6d64; font-size: 9px; }
+.page-filterbar > span { color: #8a958e; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.page-filterbar > span strong { color: #4b5a51; font-size: 11px; }
+
+@media (max-width: 760px) {
+  .page-filterbar, .page-filterbar.compact { grid-template-columns: 1fr; }
+  .page-filterbar.compact > svg { display: none; }
+  .page-filterbar > span { padding: 2px 3px; }
+}

@@ -1492,12 +1492,32 @@ function DocumentsView({
   rows: { contact: RelationshipContact; document: ContactDocument }[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [documentQuery, setDocumentQuery] = useState("");
+  const [confidentiality, setConfidentiality] = useState<"all" | ContactDocument["confidentiality"]>("all");
+  const needle = documentQuery.trim().toLowerCase();
+  const visible = rows.filter(({ contact, document }) => {
+    const confidentialityMatch = confidentiality === "all" || document.confidentiality === confidentiality;
+    const haystack = [document.title, document.type, document.content || "", contact.name, contact.organization].join(" ").toLowerCase();
+    return confidentialityMatch && (!needle || haystack.includes(needle));
+  });
+
   return (
     <div className="page-view">
       <PageHero icon={<FileText />} eyebrow="RELATIONSHIP MEMORY" title="Documents" text="Proposals, teasers, NDAs, proof/capacity records, briefs and generated working documents stay attached to the contact." />
+      <div className="page-filterbar">
+        <div className="search-input"><Search /><input value={documentQuery} onChange={(event) => setDocumentQuery(event.target.value)} placeholder="Search document, contact, content…" /></div>
+        <select value={confidentiality} onChange={(event) => setConfidentiality(event.target.value as "all" | ContactDocument["confidentiality"])}>
+          <option value="all">All confidentiality</option>
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="confidential">Confidential</option>
+          <option value="restricted">Restricted</option>
+        </select>
+        <span><strong>{visible.length}</strong> / {rows.length}</span>
+      </div>
       <section className="table-card">
         <div className="table-header docs"><span>Document</span><span>Contact</span><span>Confidentiality</span><span>Created</span></div>
-        {rows.map(({ contact, document }) => (
+        {visible.map(({ contact, document }) => (
           <button className="table-row docs" key={document.id} onClick={() => onOpen(contact)}>
             <span><FileText /><b>{document.title}</b></span>
             <span>{contact.name}<small>{contact.organization}</small></span>
@@ -1505,7 +1525,7 @@ function DocumentsView({
             <span>{prettyDate(document.createdAt)}</span>
           </button>
         ))}
-        {!rows.length ? <EmptyMini icon={<FileText />} title="No relationship documents yet" text="Create a handoff, proposal, call brief or attach a link from a contact record." /> : null}
+        {!visible.length ? <EmptyMini icon={<FileText />} title="No documents match" text="Change the search or confidentiality filter." /> : null}
       </section>
     </div>
   );
@@ -1518,14 +1538,24 @@ function NetworkView({
   contacts: RelationshipContact[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [relationFilter, setRelationFilter] = useState("all");
   const connections = contacts.flatMap((contact) => contact.connections.map((connection) => ({
     source: contact,
     target: contacts.find((item) => item.id === connection.contactId),
     connection,
   }))).filter((row) => row.target);
-  const connectedIds = new Set(connections.flatMap((row) => [row.source.id, row.target?.id || ""]));
+  const relationTypes = [...new Set(connections.map((row) => row.connection.relationship))].sort();
+  const visibleConnections = relationFilter === "all"
+    ? connections
+    : connections.filter((row) => row.connection.relationship === relationFilter);
+  const connectedIds = new Set(visibleConnections.flatMap((row) => [row.source.id, row.target?.id || ""]));
   const top = contacts
-    .map((contact) => ({ contact, count: contact.connections.length + connections.filter((row) => row.target?.id === contact.id).length }))
+    .map((contact) => ({
+      contact,
+      count:
+        visibleConnections.filter((row) => row.source.id === contact.id).length +
+        visibleConnections.filter((row) => row.target?.id === contact.id).length,
+    }))
     .filter((row) => row.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
@@ -1533,6 +1563,14 @@ function NetworkView({
   return (
     <div className="page-view">
       <PageHero icon={<Network />} eyebrow="NETWORK INTELLIGENCE" title="Relationship graph" text="Track introductions, representation and referral paths instead of treating every person as an isolated row." />
+      <div className="page-filterbar compact">
+        <Network />
+        <select value={relationFilter} onChange={(event) => setRelationFilter(event.target.value)}>
+          <option value="all">All connection types</option>
+          {relationTypes.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+        </select>
+        <span><strong>{visibleConnections.length}</strong> connections</span>
+      </div>
       <div className="network-grid">
         <section className="network-map">
           <div className="network-center"><Network /><strong>{connectedIds.size}</strong><span>connected contacts</span></div>
@@ -1546,18 +1584,18 @@ function NetworkView({
               </button>
             );
           })}
-          {!top.length ? <div className="network-empty">Add connections from contact records to build the graph.</div> : null}
+          {!top.length ? <div className="network-empty">No connections match this filter yet.</div> : null}
         </section>
         <section className="network-edges">
-          <div className="page-card-head"><span>Connection log</span><strong>{connections.length}</strong></div>
-          {connections.slice(0, 50).map(({ source, target, connection }) => target ? (
+          <div className="page-card-head"><span>Connection log</span><strong>{visibleConnections.length}</strong></div>
+          {visibleConnections.slice(0, 50).map(({ source, target, connection }) => target ? (
             <button key={connection.id} onClick={() => onOpen(source)}>
               <span className={"pipeline-avatar mini " + source.pipeline}>{initials(source.name)}</span>
               <span><strong>{source.name}</strong><small>{connection.relationship.replaceAll("_", " ")} → {target.name}</small></span>
               <ChevronRight />
             </button>
           ) : null)}
-          {!connections.length ? <EmptyMini icon={<Network />} title="No links yet" text="When someone introduces another person, save the connection once and keep it forever." /> : null}
+          {!visibleConnections.length ? <EmptyMini icon={<Network />} title="No links match" text="Change the relationship filter or add a connection from a contact record." /> : null}
         </section>
       </div>
     </div>
@@ -1571,18 +1609,38 @@ function ActivityView({
   rows: { contact: RelationshipContact; interaction: Interaction }[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [activityMember, setActivityMember] = useState<"all" | TeamMemberId>("all");
+  const [activityType, setActivityType] = useState<"all" | Interaction["type"]>("all");
+  const types = [...new Set(rows.map(({ interaction }) => interaction.type))].sort();
+  const visible = rows.filter(({ interaction }) =>
+    (activityMember === "all" || interaction.userId === activityMember) &&
+    (activityType === "all" || interaction.type === activityType),
+  );
+
   return (
     <div className="page-view">
       <PageHero icon={<Activity />} eyebrow="AUDITABLE HISTORY" title="Team activity" text="Every important relationship update is timestamped and attributed by color." />
+      <div className="page-filterbar compact">
+        <Activity />
+        <select value={activityMember} onChange={(event) => setActivityMember(event.target.value as "all" | TeamMemberId)}>
+          <option value="all">All team members</option>
+          {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => <option key={id} value={id}>{TEAM_MEMBERS[id].name}</option>)}
+        </select>
+        <select value={activityType} onChange={(event) => setActivityType(event.target.value as "all" | Interaction["type"])}>
+          <option value="all">All activity types</option>
+          {types.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> events</span>
+      </div>
       <section className="activity-page-list">
-        {rows.slice(0, 200).map(({ contact, interaction }) => (
+        {visible.slice(0, 200).map(({ contact, interaction }) => (
           <button key={interaction.id} onClick={() => onOpen(contact)}>
             <i style={{ background: TEAM_MEMBERS[interaction.userId].color }} />
             <span><strong>{interaction.summary}</strong><small>{TEAM_MEMBERS[interaction.userId].name} · {contact.name} · {contact.organization} · {prettyDate(interaction.at, true)}</small></span>
             <ChevronRight />
           </button>
         ))}
-        {!rows.length ? <EmptyMini icon={<Activity />} title="No activity yet" text="Calls, notes, tasks, documents and stage changes will appear here." /> : null}
+        {!visible.length ? <EmptyMini icon={<Activity />} title="No activity matches" text="Change the team-member or activity-type filter." /> : null}
       </section>
     </div>
   );
