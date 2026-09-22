@@ -224,3 +224,84 @@ button.primary:hover { background: #2d503c; }
 .followup-card { border-color: #e4ccb5; }
 .followup-card .page-card-head { background: #fff9f3; }
 .followup-card .page-card-head span, .followup-card .page-card-head strong { color: #8e5a2f; }
+
+
+/* ===== DESKTOP OPERATING PAGE POLISH ===== */
+.task-board,
+.network-grid,
+.outreach-grid {
+  gap: 12px;
+}
+.task-board > section,
+.table-card,
+.network-map,
+.network-edges,
+.activity-page-list,
+.outreach-card {
+  border-color: #dfe6e1;
+  border-radius: 15px;
+  box-shadow: 0 8px 24px rgba(23,40,29,.03);
+}
+.page-card-head {
+  min-height: 48px;
+  padding: 10px 13px;
+  background: linear-gradient(180deg,#fff,#fbfcfb);
+}
+.page-card-head span { font-size: 8px; }
+.page-card-head strong { font-size: 15px; }
+
+.task-row {
+  min-height: 58px;
+  padding: 8px 11px;
+}
+.task-open strong { font-size: 9px; }
+.task-open small { font-size: 7px; }
+
+.table-header,
+.table-row {
+  padding: 9px 13px;
+}
+.table-header { font-size: 7px; }
+.table-row b { font-size: 9px; }
+
+.network-map { min-height: 500px; }
+.network-edges { max-height: 500px; }
+
+.page-filterbar {
+  margin-bottom: 9px;
+  padding: 9px;
+  border-radius: 11px;
+  box-shadow: 0 4px 14px rgba(23,40,29,.02);
+}
+.page-filterbar select { min-height: 35px; }
+
+.outreach-grid {
+  grid-template-columns: minmax(0,1.3fr) minmax(320px,.7fr);
+}
+.outreach-row {
+  padding: 12px 13px;
+}
+.outreach-row > p {
+  margin: 8px 0;
+  padding: 8px 9px;
+}
+.outreach-actions button {
+  min-height: 29px;
+}
+.ready-draft-list > div {
+  padding: 7px 9px;
+}
+.sent-list > button {
+  min-height: 54px;
+  padding: 8px 11px;
+}
+
+.modal {
+  border-radius: 17px;
+}
+.modal-head {
+  min-height: 58px;
+}
+.document-modal {
+  width: min(940px,100%);
+}
