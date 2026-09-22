@@ -212,6 +212,22 @@ function emailDocumentParts(document: ContactDocument) {
   };
 }
 
+function outreachReadiness(contact: RelationshipContact) {
+  const missing: string[] = [];
+  if (!contact.email) missing.push("published email");
+  if (/NO PUBLISHED|FINAL DEEP SEARCH|UNVERIFIED/i.test(contact.emailConfidence || "")) missing.push("verified email route");
+  if (!contact.publicObservation.trim()) missing.push("public observation");
+  if (!contact.outreachHook.trim()) missing.push("outreach hook");
+  if (["hold", "inactive"].includes(contact.stage)) missing.push("active stage");
+  return { ready: missing.length === 0, missing };
+}
+
+function emailTouch(document: ContactDocument): 0 | 3 | 10 {
+  if (/day\s*10/i.test(document.title)) return 10;
+  if (/day\s*3/i.test(document.title)) return 3;
+  return 0;
+}
+
 export function Dashboard() {
   const [contacts, setContacts] = useState<RelationshipContact[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -752,6 +768,33 @@ export function Dashboard() {
     }
   };
 
+  const createInitialOutreachDraft = (contact: RelationshipContact) => {
+    const readiness = outreachReadiness(contact);
+    if (!readiness.ready) {
+      toast.error("This contact is not ready to draft.", { description: "Missing: " + readiness.missing.join(", ") });
+      return;
+    }
+    if (contact.documents.some((document) => document.type === "email")) {
+      toast.info("This contact already has outreach history.");
+      return;
+    }
+    const draft = draftEmail(contact, 0);
+    const document = makeDocument(
+      "Email — " + contact.name,
+      "email",
+      "internal",
+      member,
+      "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+    );
+    mutateContact(contact.id, (item) => ({
+      ...item,
+      stage: ["new", "research"].includes(item.stage) ? "ready" : item.stage,
+      documents: [...item.documents, document],
+      interactions: [...item.interactions, makeInteraction(member, "document", "Created Day 0 outreach draft.")],
+    }));
+    toast.success("Day 0 draft added to Outreach");
+  };
+
   const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
     const parts = emailDocumentParts(document);
     setSelectedId(contact.id);
@@ -805,17 +848,41 @@ export function Dashboard() {
       return;
     }
     const parts = emailDocumentParts(document);
+    const touch = emailTouch(document);
     const sentAt = new Date().toISOString();
-    mutateContact(contactId, (item) => ({
-      ...item,
-      stage: ["new", "research", "ready"].includes(item.stage) ? "contacted" : item.stage,
-      documents: item.documents.map((doc) => doc.id === documentId ? { ...doc, sentAt } : doc),
-      interactions: [
-        ...item.interactions,
-        makeInteraction(member, "email", "Email sent: " + (parts.subject || document.title)),
-      ],
-    }));
-    toast.success("Email marked sent");
+    const nextTouch = touch === 0 ? 3 : touch === 3 ? 10 : null;
+    const followupDue = nextTouch ? new Date(Date.now() + (nextTouch === 3 ? 3 : 7) * 86_400_000).toISOString() : null;
+    mutateContact(contactId, (item) => {
+      const completedTasks = item.tasks.map((task) => {
+        if (touch === 3 && /outreach follow-up: day 3/i.test(task.title) && !["done", "canceled"].includes(task.status)) {
+          return { ...task, status: "done" as const, completedAt: sentAt };
+        }
+        if (touch === 10 && /outreach follow-up: day 10/i.test(task.title) && !["done", "canceled"].includes(task.status)) {
+          return { ...task, status: "done" as const, completedAt: sentAt };
+        }
+        return task;
+      });
+      const hasNext = nextTouch
+        ? completedTasks.some((task) => task.title.toLowerCase() === ("outreach follow-up: day " + nextTouch).toLowerCase() && !["done", "canceled"].includes(task.status))
+        : false;
+      const nextTask = nextTouch && !hasNext
+        ? makeTask("Outreach follow-up: Day " + nextTouch, member, member, followupDue)
+        : null;
+      return {
+        ...item,
+        stage: ["new", "research", "ready"].includes(item.stage) ? "contacted" : item.stage,
+        nextAction: nextTouch ? "Send Day " + nextTouch + " follow-up" : item.nextAction,
+        nextActionDue: nextTouch ? followupDue : item.nextActionDue,
+        documents: item.documents.map((doc) => doc.id === documentId ? { ...doc, sentAt } : doc),
+        tasks: nextTask ? [...completedTasks, nextTask] : completedTasks,
+        interactions: [
+          ...item.interactions,
+          makeInteraction(member, "email", "Email sent: " + (parts.subject || document.title)),
+          ...(nextTask ? [makeInteraction(member, "task", "Scheduled Day " + nextTouch + " outreach follow-up.")] : []),
+        ],
+      };
+    });
+    toast.success(nextTouch ? "Email sent · Day " + nextTouch + " follow-up scheduled" : "Email marked sent");
   };
 
   const swipe = (endX: number) => {
@@ -1003,9 +1070,11 @@ export function Dashboard() {
 
           {view === "outreach" ? (
             <OutreachView
+              contacts={contacts}
               queued={queuedEmails}
               sent={sentEmails}
               onOpen={openContact}
+              onCreateDraft={createInitialOutreachDraft}
               onEdit={editQueuedEmail}
               onApprove={approveQueuedEmail}
               onOpenEmail={openQueuedEmail}
@@ -1532,17 +1601,21 @@ function ContactDetail({
 }
 
 function OutreachView({
+  contacts,
   queued,
   sent,
   onOpen,
+  onCreateDraft,
   onEdit,
   onApprove,
   onOpenEmail,
   onMarkSent,
 }: {
+  contacts: RelationshipContact[];
   queued: { contact: RelationshipContact; document: ContactDocument }[];
   sent: { contact: RelationshipContact; document: ContactDocument }[];
   onOpen: (contact: RelationshipContact) => void;
+  onCreateDraft: (contact: RelationshipContact) => void;
   onEdit: (contact: RelationshipContact, document: ContactDocument) => void;
   onApprove: (contactId: string, documentId: string) => void;
   onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
@@ -1550,6 +1623,11 @@ function OutreachView({
 }) {
   const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
   const visible = queued.filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline);
+  const readyToDraft = contacts
+    .filter((contact) => (pipeline === "all" || contact.pipeline === pipeline) && outreachReadiness(contact).ready)
+    .filter((contact) => !contact.documents.some((document) => document.type === "email"))
+    .sort((a, b) => (b.priority === "A" ? 2 : b.priority === "B" ? 1 : 0) - (a.priority === "A" ? 2 : a.priority === "B" ? 1 : 0) || b.score - a.score)
+    .slice(0, 30);
 
   return (
     <div className="page-view">
@@ -1603,22 +1681,40 @@ function OutreachView({
           </div>
         </section>
 
-        <section className="outreach-card sent-card">
-          <div className="page-card-head"><span>Recently sent</span><strong>{sent.length}</strong></div>
-          <div className="sent-list">
-            {sent.slice(0, 30).map(({ contact, document }) => {
-              const parts = emailDocumentParts(document);
-              return (
-                <button key={document.id} onClick={() => onOpen(contact)}>
-                  <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
-                  <span><strong>{contact.name}</strong><small>{parts.subject} · {document.sentAt ? prettyDate(document.sentAt, true) : ""}</small></span>
-                  <ChevronRight />
-                </button>
-              );
-            })}
-            {!sent.length ? <EmptyMini icon={<Mail />} title="No sent log yet" text="Mark a reviewed draft as sent after it leaves your mailbox." /> : null}
-          </div>
-        </section>
+        <div className="outreach-side">
+          <section className="outreach-card">
+            <div className="page-card-head"><span>Ready to draft</span><strong>{readyToDraft.length}</strong></div>
+            <div className="ready-draft-list">
+              {readyToDraft.map((contact) => (
+                <div key={contact.id}>
+                  <button onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>{contact.organization} · Priority {contact.priority}</small></span>
+                  </button>
+                  <button className="secondary" onClick={() => onCreateDraft(contact)}>Create Day 0</button>
+                </div>
+              ))}
+              {!readyToDraft.length ? <EmptyMini icon={<CheckCircle2 />} title="No untouched ready leads" text="Contacts with verified routes, a public observation and an outreach hook appear here." /> : null}
+            </div>
+          </section>
+
+          <section className="outreach-card sent-card">
+            <div className="page-card-head"><span>Recently sent</span><strong>{sent.length}</strong></div>
+            <div className="sent-list">
+              {sent.slice(0, 30).map(({ contact, document }) => {
+                const parts = emailDocumentParts(document);
+                return (
+                  <button key={document.id} onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>{parts.subject} · {document.sentAt ? prettyDate(document.sentAt, true) : ""}</small></span>
+                    <ChevronRight />
+                  </button>
+                );
+              })}
+              {!sent.length ? <EmptyMini icon={<Mail />} title="No sent log yet" text="Mark a reviewed draft as sent after it leaves your mailbox." /> : null}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
