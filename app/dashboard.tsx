@@ -389,7 +389,7 @@ export function Dashboard() {
 
   const openContact = (contact: RelationshipContact) => {
     setSelectedId(contact.id);
-    setView(contact.pipeline === "capital" && view === "capital" ? "capital" : "contacts");
+    setView(contact.pipeline === "capital" ? "capital" : "contacts");
     setMenuOpen(false);
   };
 
