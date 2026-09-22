@@ -1575,7 +1575,7 @@ function OutreachView({
             {visible.map(({ contact, document }) => {
               const parts = emailDocumentParts(document);
               return (
-                <article key={document.id} className="outreach-row">
+                <article key={document.id} className={document.approvedAt ? "outreach-row approved" : "outreach-row"}>
                   <button className="outreach-contact" onClick={() => onOpen(contact)}>
                     <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
                     <span>
