@@ -511,6 +511,25 @@ export function Dashboard() {
     window.location.href = href;
   };
 
+  const logGeneratedEmailSent = () => {
+    if (!selected || !generated?.emailBody) return;
+    const sentAt = new Date().toISOString();
+    const document = {
+      ...makeDocument(generated.title, "email", "internal", member, generated.content),
+      sentAt,
+    };
+    mutateContact(selected.id, (contact) => ({
+      ...contact,
+      stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
+      documents: [...contact.documents, document],
+      interactions: [
+        ...contact.interactions,
+        makeInteraction(member, "email", "Email sent: " + (generated.subject || generated.title)),
+      ],
+    }));
+    toast.success("Email logged as sent");
+  };
+
   const startVoice = () => {
     setVoiceOpen(true);
     setVoiceText("");
