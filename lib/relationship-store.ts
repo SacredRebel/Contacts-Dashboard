@@ -397,6 +397,8 @@ export function changedSince(contacts: RelationshipContact[], since: string | nu
 }
 
 async function cloudRequest(_method: "GET" | "POST", _contacts?: RelationshipContact[]) {
+  void _method;
+  void _contacts;
   throw new Error(
     "Shared cloud sync is not configured yet. Use Export backup / Import backup for cross-device handoff until the shared backend is connected.",
   );
