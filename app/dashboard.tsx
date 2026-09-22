@@ -61,7 +61,7 @@ export function Dashboard() {
   const [view, setView] = useState<View>("inbox");
   const [filter, setFilter] = useState<QueueFilter>("all");
   const [query, setQuery] = useState("");
-  const [tool, setTool] = useState("Work Logger");
+  const [tool, setTool] = useState("Client–Crew–Office Platform");
   const [niche, setNiche] = useState("all");
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState("");
@@ -224,7 +224,7 @@ export function Dashboard() {
           && (niche === "all" || item.niche === niche) && (!needle || haystack.includes(needle));
       })
       .sort((a, b) => {
-        const lanePriority = Number(b.portfolioTool === "Work Logger") - Number(a.portfolioTool === "Work Logger");
+        const lanePriority = Number(b.portfolioTool === "Client–Crew–Office Platform") - Number(a.portfolioTool === "Client–Crew–Office Platform");
         return lanePriority || (a.reviewRank || 9999) - (b.reviewRank || 9999) || b.score - a.score;
       });
   }, [filter, niche, opportunities, query, tool, view]);
@@ -299,11 +299,11 @@ export function Dashboard() {
               <div className="queue-tools">
                 <div className="search-box"><Search /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search contacts…" /></div>
                 <div className="select-grid">
-                  <label><span>Portfolio lane</span><select value={tool} onChange={(e) => setTool(e.target.value)}><option value="all">All offers</option>{tools.map((item) => <option key={item} value={item}>{item === "Work Logger" ? "Three-way operations app" : item}</option>)}</select></label>
+                  <label><span>Portfolio lane</span><select value={tool} onChange={(e) => setTool(e.target.value)}><option value="all">All offers</option>{tools.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                   <label><span>Niche</span><select value={niche} onChange={(e) => setNiche(e.target.value)}><option value="all">All niches</option>{niches.map((item) => <option key={item}>{item}</option>)}</select></label>
                 </div>
                 <div className="filters"><Filter />{(["all", "monday", "ready", "review", "approved", "sent"] as QueueFilter[]).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}</div>
-                {tool === "Work Logger" && <div className="focus-banner"><BriefcaseBusiness /><div><strong>Review first · Client–Crew–Office</strong><span>20 field-service businesses matched to the three-way operations app.</span></div></div>}
+                {tool === "Client–Crew–Office Platform" && <div className="focus-banner"><BriefcaseBusiness /><div><strong>Review first · Client–Crew–Office Platform</strong><span>20 businesses matched to the Plant Persuasion three-role concept. Each draft links to that demo.</span></div></div>}
               </div>
               <div className="queue-summary"><strong>{filtered.length} matches</strong><span>{filter === "monday" ? "ordered send review" : "best fit first"}</span></div>
               <div className="opportunity-list">

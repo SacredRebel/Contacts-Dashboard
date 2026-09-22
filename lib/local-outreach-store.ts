@@ -181,11 +181,25 @@ export function reconcileSnapshot(current: Opportunity[], seeds: unknown[] = sna
 
     const live = result[index];
     const next = { ...seed, ...live };
+    const migrateToThreeRoleProduct = seed.campaign === "Client–Crew–Office first-send"
+      && live.portfolioTool === "Work Logger"
+      && !live.sentAt
+      && !live.repliedAt
+      && !live.approvedAt;
+    if (migrateToThreeRoleProduct) {
+      const productFields = [
+        "portfolioTool", "demoUrl", "campaign", "reviewRank", "offerTitle",
+        "offerScope", "priceRange", "deliveryTime", "previewIdea", "inference",
+        "subject", "emailBody", "reviewerNote", "updatedAt",
+      ] as const;
+      productFields.forEach((field) => { next[field] = seed[field] as never; });
+    }
     next.niche = live.niche || seed.niche;
     next.parentGroup = live.parentGroup || seed.parentGroup;
     next.sourceCheckedAt = live.sourceCheckedAt || seed.sourceCheckedAt;
     next.researchBatch = live.researchBatch || seed.researchBatch;
     next.reviewRank = live.reviewRank ?? seed.reviewRank;
+    if (migrateToThreeRoleProduct) next.reviewRank = seed.reviewRank;
     next.holdReason = live.holdReason || seed.holdReason;
     next.sentAt = live.sentAt || seed.sentAt;
     next.repliedAt = live.repliedAt || seed.repliedAt;
