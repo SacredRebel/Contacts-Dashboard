@@ -205,14 +205,19 @@ export function Dashboard() {
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const loaded = loadContacts();
-    setContacts(loaded);
-    setSelectedId(loaded[0]?.id || "");
-    setMember(activeUser());
-    setCloudCode(teamCode());
-    setLastSeen(previousLastSeen());
-    const timer = window.setTimeout(markSeen, 3000);
-    return () => window.clearTimeout(timer);
+    const loadTimer = window.setTimeout(() => {
+      const loaded = loadContacts();
+      setContacts(loaded);
+      setSelectedId(loaded[0]?.id || "");
+      setMember(activeUser());
+      setCloudCode(teamCode());
+      setLastSeen(previousLastSeen());
+    }, 0);
+    const seenTimer = window.setTimeout(markSeen, 3000);
+    return () => {
+      window.clearTimeout(loadTimer);
+      window.clearTimeout(seenTimer);
+    };
   }, []);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
@@ -272,8 +277,9 @@ export function Dashboard() {
 
   useEffect(() => {
     if (view !== "contacts" && view !== "capital") return;
-    if (!filtered.length) return;
-    if (!filtered.some((contact) => contact.id === selectedId)) setSelectedId(filtered[0].id);
+    if (!filtered.length || filtered.some((contact) => contact.id === selectedId)) return;
+    const timer = window.setTimeout(() => setSelectedId(filtered[0].id), 0);
+    return () => window.clearTimeout(timer);
   }, [filtered, selectedId, view]);
 
   const metrics = useMemo(() => ({
