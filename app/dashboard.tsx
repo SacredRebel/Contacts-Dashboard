@@ -353,7 +353,8 @@ export function Dashboard() {
     const task = makeTask(
       title.trim(),
       assignedTo,
-          due && !Number.isNaN(Date.parse(due)) ? new Date(due + "T17:00:00").toISOString() : null,
+      member,
+      due && !Number.isNaN(Date.parse(due)) ? new Date(due + "T17:00:00").toISOString() : null,
     );
     mutateContact(selected.id, (contact) => ({
       ...contact,
@@ -1036,7 +1037,6 @@ function HomeView({
 function ContactDetail({
   contact,
   contacts,
-  member,
   filtered,
   onSelect,
   onStage,
