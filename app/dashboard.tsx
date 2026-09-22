@@ -1065,6 +1065,7 @@ export function Dashboard() {
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
+              {generated.emailBody ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
               {generated.emailBody && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
             </div>
           </div>
