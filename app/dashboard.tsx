@@ -92,6 +92,7 @@ import {
 } from "@/lib/relationship-types";
 
 type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
+type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
 
 type GeneratedDoc = {
@@ -152,6 +153,24 @@ function isDue(value?: string | null) {
   return due <= end;
 }
 
+function isToday(value?: string | null) {
+  if (!value) return false;
+  const due = new Date(value);
+  const start = new Date();
+  const end = new Date();
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return due >= start && due <= end;
+}
+
+function isOverdue(value?: string | null) {
+  if (!value) return false;
+  const due = new Date(value);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return due < start;
+}
+
 function validPhone(value: string) {
   return value.replace(/\D/g, "").length >= 7;
 }
@@ -188,6 +207,7 @@ export function Dashboard() {
   const [query, setQuery] = useState("");
   const [pipelineFilter, setPipelineFilter] = useState<Pipeline | "all">("all");
   const [stageFilter, setStageFilter] = useState<RelationshipStage | "all">("all");
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [member, setMember] = useState<TeamMemberId>("paul");
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
