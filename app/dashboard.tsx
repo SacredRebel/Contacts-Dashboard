@@ -34,7 +34,6 @@ import {
   Phone,
   Plus,
   Printer,
-  RefreshCw,
   Ruler,
   Search,
   Settings,
@@ -52,6 +51,7 @@ import {
   changedSince,
   contactHeadline,
   draftEmail,
+  exportContactsCsv,
   exportWorkspace,
   generateCallBrief,
   generateDueDiligenceRequest,
@@ -68,13 +68,9 @@ import {
   markSeen,
   nextOpenTask,
   previousLastSeen,
-  pullCloud,
-  pushCloud,
   relationshipDepth,
   saveContacts,
   setActiveUser,
-  setTeamCode,
-  teamCode,
   uid,
 } from "@/lib/relationship-store";
 import {
@@ -91,7 +87,7 @@ import {
   type TeamMemberId,
 } from "@/lib/relationship-types";
 
-type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
+type View = "home" | "contacts" | "capital" | "outreach" | "tasks" | "documents" | "network" | "activity";
 type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
 
@@ -200,6 +196,21 @@ function capitalBadge(profile?: CapitalProfile) {
   return "Needs verification";
 }
 
+function emailDocumentParts(document: ContactDocument) {
+  const raw = document.content || "";
+  const firstBreak = raw.indexOf("\n\n");
+  if (raw.startsWith("SUBJECT:") && firstBreak >= 0) {
+    return {
+      subject: raw.slice("SUBJECT:".length, firstBreak).trim(),
+      body: raw.slice(firstBreak + 2).trim(),
+    };
+  }
+  return {
+    subject: document.title.replace(/^(Email|Follow-up Day \d+) —\s*/, "").trim() || "Follow-up",
+    body: raw,
+  };
+}
+
 export function Dashboard() {
   const [contacts, setContacts] = useState<RelationshipContact[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -218,8 +229,6 @@ export function Dashboard() {
   const [listening, setListening] = useState(false);
   const [generated, setGenerated] = useState<GeneratedDoc | null>(null);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
-  const [cloudCode, setCloudCode] = useState("");
-  const [cloudBusy, setCloudBusy] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [newContact, setNewContact] = useState({
     name: "",
@@ -239,7 +248,6 @@ export function Dashboard() {
       setContacts(loaded);
       setSelectedId(loaded[0]?.id || "");
       setMember(activeUser());
-      setCloudCode(teamCode());
       setLastSeen(previousLastSeen());
     }, 0);
     const seenTimer = window.setTimeout(markSeen, 3000);
@@ -357,6 +365,16 @@ export function Dashboard() {
       contact.documents.map((document) => ({ contact, document })),
     ).sort((a, b) => b.document.createdAt.localeCompare(a.document.createdAt));
   }, [contacts]);
+
+  const queuedEmails = useMemo(
+    () => allDocuments.filter(({ document }) => document.type === "email" && !document.sentAt),
+    [allDocuments],
+  );
+
+  const sentEmails = useMemo(
+    () => allDocuments.filter(({ document }) => document.type === "email" && document.sentAt).slice(0, 100),
+    [allDocuments],
+  );
 
   const allActivity = useMemo(() => {
     return contacts.flatMap((contact) =>
@@ -690,36 +708,34 @@ export function Dashboard() {
     }
   };
 
-  const pullFromCloud = async () => {
-    setCloudBusy(true);
-    try {
-      setTeamCode(cloudCode);
-      const result = await pullCloud();
-      if (!result.length) {
-        toast.info("Cloud workspace is empty", { description: "Use Push local to cloud to seed it." });
-      } else {
-        persist(result);
-        setSelectedId(result[0]?.id || "");
-        toast.success("Cloud workspace loaded");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cloud sync failed.");
-    } finally {
-      setCloudBusy(false);
+  const openQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
+    if (!contact.email) {
+      toast.error("This contact has no published email address.");
+      return;
     }
+    const parts = emailDocumentParts(document);
+    window.location.href =
+      "mailto:" + encodeURIComponent(contact.email) +
+      "?subject=" + encodeURIComponent(parts.subject) +
+      "&body=" + encodeURIComponent(parts.body);
   };
 
-  const pushToCloud = async () => {
-    setCloudBusy(true);
-    try {
-      setTeamCode(cloudCode);
-      await pushCloud(contacts);
-      toast.success("Workspace pushed to cloud");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cloud sync failed.");
-    } finally {
-      setCloudBusy(false);
-    }
+  const markQueuedEmailSent = (contactId: string, documentId: string) => {
+    const contact = contacts.find((item) => item.id === contactId);
+    const document = contact?.documents.find((item) => item.id === documentId);
+    if (!contact || !document || document.type !== "email") return;
+    const parts = emailDocumentParts(document);
+    const sentAt = new Date().toISOString();
+    mutateContact(contactId, (item) => ({
+      ...item,
+      stage: ["new", "research", "ready"].includes(item.stage) ? "contacted" : item.stage,
+      documents: item.documents.map((doc) => doc.id === documentId ? { ...doc, sentAt } : doc),
+      interactions: [
+        ...item.interactions,
+        makeInteraction(member, "email", "Email sent: " + (parts.subject || document.title)),
+      ],
+    }));
+    toast.success("Email marked sent");
   };
 
   const swipe = (endX: number) => {
@@ -738,6 +754,7 @@ export function Dashboard() {
     { id: "home" as const, label: "Today", icon: <Home /> },
     { id: "contacts" as const, label: "Contacts", icon: <Users /> },
     { id: "capital" as const, label: "Capital", icon: <CircleDollarSign /> },
+    { id: "outreach" as const, label: "Outreach", icon: <Mail /> },
     { id: "tasks" as const, label: "Tasks", icon: <ListTodo /> },
     { id: "documents" as const, label: "Documents", icon: <FileText /> },
     { id: "network" as const, label: "Network", icon: <Network /> },
@@ -766,6 +783,7 @@ export function Dashboard() {
             >
               {item.icon}<span>{item.label}</span>
               {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
+              {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
             </button>
           ))}
         </nav>
@@ -782,7 +800,7 @@ export function Dashboard() {
         </div>
 
         <button className="settings-button" onClick={() => setSettingsOpen(true)}>
-          <Settings /> Settings & sync
+          <Settings /> Settings & backup
         </button>
       </aside>
 
@@ -903,6 +921,16 @@ export function Dashboard() {
             </div>
           ) : null}
 
+          {view === "outreach" ? (
+            <OutreachView
+              queued={queuedEmails}
+              sent={sentEmails}
+              onOpen={openContact}
+              onOpenEmail={openQueuedEmail}
+              onMarkSent={markQueuedEmailSent}
+            />
+          ) : null}
+
           {view === "tasks" ? (
             <TasksView tasks={openTasks} member={member} onOpen={openContact} onComplete={completeTask} />
           ) : null}
@@ -1013,7 +1041,7 @@ export function Dashboard() {
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false); }}>
           <div className="modal settings-modal">
             <div className="modal-head">
-              <div><Settings /><span><strong>Settings & sync</strong><small>Team identity, backups and shared-cloud handoff.</small></span></div>
+              <div><Settings /><span><strong>Settings & backup</strong><small>Team identity, exports and local workspace restore.</small></span></div>
               <button onClick={() => setSettingsOpen(false)}><X /></button>
             </div>
 
@@ -1031,22 +1059,13 @@ export function Dashboard() {
             </section>
 
             <section className="settings-section">
-              <h3>Shared cloud</h3>
-              <p>The app is fully usable locally now. Shared sync activates after a backend is configured for this deployment. The team code is kept only in this browser session.</p>
-              <label className="stacked-label"><span>Team access code</span><input type="password" value={cloudCode} onChange={(e) => setCloudCode(e.target.value)} placeholder="Enter deployment team code" /></label>
-              <div className="button-row">
-                <button className="secondary" disabled={cloudBusy} onClick={pullFromCloud}><RefreshCw /> Pull cloud</button>
-                <button className="secondary" disabled={cloudBusy} onClick={pushToCloud}><Upload /> Push local to cloud</button>
-              </div>
-            </section>
-
-            <section className="settings-section">
-              <h3>Backup / restore</h3>
-              <p>Export includes all contacts, interactions, tasks, documents metadata, capital qualification and network links.</p>
+              <h3>Local backup / portability</h3>
+              <p>This version intentionally skips a shared backend. JSON is the complete restorable workspace; CSV is a portable contact / pipeline export for review, spreadsheets or handoff.</p>
               <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
               <div className="button-row">
-                <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export backup</button>
-                <button className="secondary" onClick={() => importRef.current?.click()}><Upload /> Import backup</button>
+                <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export JSON backup</button>
+                <button className="secondary" onClick={() => exportContactsCsv(contacts)}><Download /> Export contacts CSV</button>
+                <button className="secondary" onClick={() => importRef.current?.click()}><Upload /> Import JSON backup</button>
               </div>
             </section>
           </div>
@@ -1423,6 +1442,91 @@ function ContactDetail({
             {contact.sourceUrl ? <a href={contact.sourceUrl} target="_blank" rel="noreferrer">Primary source <ExternalLink /></a> : null}
             {contact.verificationUrl ? <a href={contact.verificationUrl} target="_blank" rel="noreferrer">Verification <ExternalLink /></a> : null}
             {contact.website ? <a href={contact.website} target="_blank" rel="noreferrer">Website <ExternalLink /></a> : null}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function OutreachView({
+  queued,
+  sent,
+  onOpen,
+  onOpenEmail,
+  onMarkSent,
+}: {
+  queued: { contact: RelationshipContact; document: ContactDocument }[];
+  sent: { contact: RelationshipContact; document: ContactDocument }[];
+  onOpen: (contact: RelationshipContact) => void;
+  onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
+  onMarkSent: (contactId: string, documentId: string) => void;
+}) {
+  const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
+  const visible = queued.filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline);
+
+  return (
+    <div className="page-view">
+      <PageHero
+        icon={<Mail />}
+        eyebrow="SEND QUEUE"
+        title="Outreach"
+        text="Draft, review, send and explicitly log each email. Nothing is auto-sent from the dashboard."
+      />
+      <div className="page-filterbar compact">
+        <Mail />
+        <select value={pipeline} onChange={(event) => setPipeline(event.target.value as Pipeline | "all")}>
+          <option value="all">All pipelines</option>
+          {PIPELINES.map((item) => <option key={item} value={item}>{PIPELINE_LABELS[item]}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> waiting to send</span>
+      </div>
+
+      <div className="outreach-grid">
+        <section className="outreach-card">
+          <div className="page-card-head"><span>Drafts waiting</span><strong>{visible.length}</strong></div>
+          <div className="outreach-list">
+            {visible.map(({ contact, document }) => {
+              const parts = emailDocumentParts(document);
+              return (
+                <article key={document.id} className="outreach-row">
+                  <button className="outreach-contact" onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span>
+                      <strong>{contact.name}</strong>
+                      <small>{contact.organization} · {parts.subject}</small>
+                    </span>
+                  </button>
+                  <p>{parts.body.slice(0, 180)}{parts.body.length > 180 ? "…" : ""}</p>
+                  <div>
+                    <span>Created by {TEAM_MEMBERS[document.createdBy].name} · {prettyDate(document.createdAt, true)}</span>
+                    <span className="outreach-actions">
+                      <button className="secondary" onClick={() => onOpen(contact)}>Edit context</button>
+                      <button className="secondary" disabled={!contact.email} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
+                      <button className="primary" onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+            {!visible.length ? <EmptyMini icon={<CheckCircle2 />} title="Send queue clear" text="Save an email draft from a contact record to place it here." /> : null}
+          </div>
+        </section>
+
+        <section className="outreach-card sent-card">
+          <div className="page-card-head"><span>Recently sent</span><strong>{sent.length}</strong></div>
+          <div className="sent-list">
+            {sent.slice(0, 30).map(({ contact, document }) => {
+              const parts = emailDocumentParts(document);
+              return (
+                <button key={document.id} onClick={() => onOpen(contact)}>
+                  <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                  <span><strong>{contact.name}</strong><small>{parts.subject} · {document.sentAt ? prettyDate(document.sentAt, true) : ""}</small></span>
+                  <ChevronRight />
+                </button>
+              );
+            })}
+            {!sent.length ? <EmptyMini icon={<Mail />} title="No sent log yet" text="Mark a reviewed draft as sent after it leaves your mailbox." /> : null}
           </div>
         </section>
       </div>
