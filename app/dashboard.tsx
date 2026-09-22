@@ -97,6 +97,7 @@ type GeneratedDoc = {
   type: ContactDocument["type"];
   subject?: string;
   emailBody?: string;
+  sourceDocumentId?: string;
 };
 
 type SpeechResultListLike = {
@@ -551,6 +552,19 @@ export function Dashboard() {
 
   const saveGenerated = () => {
     if (!selected || !generated) return;
+    if (generated.sourceDocumentId) {
+      mutateContact(selected.id, (contact) => ({
+        ...contact,
+        documents: contact.documents.map((document) =>
+          document.id === generated.sourceDocumentId
+            ? { ...document, title: generated.title, content: generated.content, approvedAt: null, approvedBy: null }
+            : document,
+        ),
+        interactions: [...contact.interactions, makeInteraction(member, "document", "Updated draft: " + generated.title + ".")],
+      }));
+      toast.success("Draft updated", { description: "Approval was reset because the content changed." });
+      return;
+    }
     const confidentiality = generated.type === "proposal" && selected.pipeline === "capital" ? "confidential" : "internal";
     const document = makeDocument(generated.title, generated.type, confidentiality, member, generated.content);
     mutateContact(selected.id, (contact) => ({
@@ -558,33 +572,63 @@ export function Dashboard() {
       documents: [...contact.documents, document],
       interactions: [...contact.interactions, makeInteraction(member, "document", "Created " + generated.title + ".")],
     }));
-    toast.success("Saved to contact file");
+    toast.success(generated.type === "email" ? "Saved to outreach queue" : "Saved to contact file");
   };
 
   const emailGenerated = () => {
-    if (!selected || !generated?.emailBody) return;
+    if (!selected || !generated || generated.type !== "email") return;
+    const draftDocument: ContactDocument = {
+      id: "preview",
+      title: generated.title,
+      type: "email",
+      confidentiality: "internal",
+      content: generated.content,
+      version: 1,
+      createdBy: member,
+      createdAt: new Date().toISOString(),
+    };
+    const parts = emailDocumentParts(draftDocument);
     const href = "mailto:" + encodeURIComponent(selected.email) +
-      "?subject=" + encodeURIComponent(generated.subject || "") +
-      "&body=" + encodeURIComponent(generated.emailBody);
+      "?subject=" + encodeURIComponent(parts.subject) +
+      "&body=" + encodeURIComponent(parts.body);
     window.location.href = href;
   };
 
   const logGeneratedEmailSent = () => {
-    if (!selected || !generated?.emailBody) return;
-    const sentAt = new Date().toISOString();
-    const document = {
-      ...makeDocument(generated.title, "email", "internal", member, generated.content),
-      sentAt,
+    if (!selected || !generated || generated.type !== "email") return;
+    const preview: ContactDocument = {
+      id: generated.sourceDocumentId || "preview",
+      title: generated.title,
+      type: "email",
+      confidentiality: "internal",
+      content: generated.content,
+      version: 1,
+      createdBy: member,
+      createdAt: new Date().toISOString(),
     };
-    mutateContact(selected.id, (contact) => ({
-      ...contact,
-      stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
-      documents: [...contact.documents, document],
-      interactions: [
-        ...contact.interactions,
-        makeInteraction(member, "email", "Email sent: " + (generated.subject || generated.title)),
-      ],
-    }));
+    const parts = emailDocumentParts(preview);
+    const sentAt = new Date().toISOString();
+    mutateContact(selected.id, (contact) => {
+      const existing = generated.sourceDocumentId
+        ? contact.documents.find((document) => document.id === generated.sourceDocumentId)
+        : null;
+      const documents = existing
+        ? contact.documents.map((document) =>
+            document.id === existing.id
+              ? { ...document, title: generated.title, content: generated.content, approvedAt: document.approvedAt || sentAt, approvedBy: document.approvedBy || member, sentAt }
+              : document,
+          )
+        : [...contact.documents, { ...makeDocument(generated.title, "email", "internal", member, generated.content), approvedAt: sentAt, approvedBy: member, sentAt }];
+      return {
+        ...contact,
+        stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
+        documents,
+        interactions: [
+          ...contact.interactions,
+          makeInteraction(member, "email", "Email sent: " + (parts.subject || generated.title)),
+        ],
+      };
+    });
     toast.success("Email logged as sent");
   };
 
@@ -708,7 +752,39 @@ export function Dashboard() {
     }
   };
 
+  const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
+    const parts = emailDocumentParts(document);
+    setSelectedId(contact.id);
+    setGenerated({
+      title: document.title,
+      content: document.content || "",
+      type: "email",
+      subject: parts.subject,
+      emailBody: parts.body,
+      sourceDocumentId: document.id,
+    });
+  };
+
+  const approveQueuedEmail = (contactId: string, documentId: string) => {
+    const approvedAt = new Date().toISOString();
+    mutateContact(contactId, (contact) => ({
+      ...contact,
+      documents: contact.documents.map((document) =>
+        document.id === documentId ? { ...document, approvedAt, approvedBy: member } : document,
+      ),
+      interactions: [
+        ...contact.interactions,
+        makeInteraction(member, "status", "Approved outreach draft for sending."),
+      ],
+    }));
+    toast.success("Draft approved");
+  };
+
   const openQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
+    if (!document.approvedAt) {
+      toast.error("Approve this draft before sending.");
+      return;
+    }
     if (!contact.email) {
       toast.error("This contact has no published email address.");
       return;
@@ -724,6 +800,10 @@ export function Dashboard() {
     const contact = contacts.find((item) => item.id === contactId);
     const document = contact?.documents.find((item) => item.id === documentId);
     if (!contact || !document || document.type !== "email") return;
+    if (!document.approvedAt) {
+      toast.error("Approve this draft before marking it sent.");
+      return;
+    }
     const parts = emailDocumentParts(document);
     const sentAt = new Date().toISOString();
     mutateContact(contactId, (item) => ({
@@ -926,6 +1006,8 @@ export function Dashboard() {
               queued={queuedEmails}
               sent={sentEmails}
               onOpen={openContact}
+              onEdit={editQueuedEmail}
+              onApprove={approveQueuedEmail}
               onOpenEmail={openQueuedEmail}
               onMarkSent={markQueuedEmailSent}
             />
@@ -1084,8 +1166,8 @@ export function Dashboard() {
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
-              {generated.emailBody ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
-              {generated.emailBody && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
+              {generated.type === "email" ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
+              {generated.type === "email" && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
             </div>
           </div>
         </div>
@@ -1453,12 +1535,16 @@ function OutreachView({
   queued,
   sent,
   onOpen,
+  onEdit,
+  onApprove,
   onOpenEmail,
   onMarkSent,
 }: {
   queued: { contact: RelationshipContact; document: ContactDocument }[];
   sent: { contact: RelationshipContact; document: ContactDocument }[];
   onOpen: (contact: RelationshipContact) => void;
+  onEdit: (contact: RelationshipContact, document: ContactDocument) => void;
+  onApprove: (contactId: string, documentId: string) => void;
   onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
   onMarkSent: (contactId: string, documentId: string) => void;
 }) {
@@ -1499,11 +1585,15 @@ function OutreachView({
                   </button>
                   <p>{parts.body.slice(0, 180)}{parts.body.length > 180 ? "…" : ""}</p>
                   <div>
-                    <span>Created by {TEAM_MEMBERS[document.createdBy].name} · {prettyDate(document.createdAt, true)}</span>
+                    <span>
+                      Created by {TEAM_MEMBERS[document.createdBy].name} · {prettyDate(document.createdAt, true)}
+                      {document.approvedAt && document.approvedBy ? " · Approved by " + TEAM_MEMBERS[document.approvedBy].name : " · Needs approval"}
+                    </span>
                     <span className="outreach-actions">
-                      <button className="secondary" onClick={() => onOpen(contact)}>Edit context</button>
-                      <button className="secondary" disabled={!contact.email} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
-                      <button className="primary" onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
+                      <button className="secondary" onClick={() => onEdit(contact, document)}>Edit draft</button>
+                      {!document.approvedAt ? <button className="secondary approve-draft" onClick={() => onApprove(contact.id, document.id)}><ShieldCheck /> Approve</button> : null}
+                      <button className="secondary" disabled={!contact.email || !document.approvedAt} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
+                      <button className="primary" disabled={!document.approvedAt} onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
                     </span>
                   </div>
                 </article>
