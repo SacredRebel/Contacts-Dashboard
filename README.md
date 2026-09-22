@@ -1,93 +1,124 @@
-# Paul’s Outreach Command Center
+# Relationship OS
 
-A focused research and approval dashboard for turning business research into thoughtful, evidence-backed client outreach.
+A shared relationship, outreach and capital-qualification workspace for Paul, Mark and Jonathan.
 
-## What works now
+This repository is the implementation of the Notion specification **Unified Relationship & Outreach Platform — Architecture & Implementation Plan** under the project **Outreach Intelligence System — Capital, Architects & Contractors**.
 
-- Review 95 deduplicated contact records, including the ranked 50-lead Monday queue
-- Search and filter by portfolio lane, niche, business, person or email
-- Inspect evidence, observations and inferences separately
-- Run a nine-point quality gate before approval
-- Edit subjects, email drafts and reviewer notes
-- Approve only drafts that pass every hard gate
-- Track approvals, manual sends, replies, meetings, opt-outs and paid work
-- Compare outcome counts by portfolio lane and niche
-- Prevent duplicate IDs, business names, parent groups, websites and emails during imports
-- Export the complete workspace as JSON or a spreadsheet-ready CSV
-- Keep all changes in the current browser with `localStorage`
+## Current platform
 
-Gmail is deliberately disconnected. Approving a draft adds it to the safe send queue; it does not send email.
+The feature branch `build/unified-relationship-platform` contains the new platform foundation:
 
-## Deploy on Vercel
+- 216 researched contacts imported from the Notion system:
+  - 62 Capital & Deal Network
+  - 68 Architects
+  - 86 Contractors / Builders
+- Equal team access with permanent color attribution for Paul, Mark and Jonathan
+- "What's next?" daily command center
+- Mobile one-contact-at-a-time deck with swipe navigation
+- Desktop contact list + living relationship dossier
+- Click-to-call, text and email
+- Voice-note capture with browser transcription where available, plus typed transcript fallback
+- Chronological relationship timeline
+- Tasks, due dates and handoffs
+- Next Best Action per contact
+- Relationship-depth indicator
+- Capital qualification panel:
+  - direct principal vs intermediary / broker / introducer
+  - decision-maker status
+  - entity verification
+  - mandate and public size/range
+  - proof/capacity status
+  - disclosure level
+  - NDA and diligence status
+  - risk / verification notes
+- Disclosure ladder from public-only to data-room stage
+- Public professional alignment tags for regenerative / impact / wellness / material-fit research
+- Relationship connections and graph view
+- One-click working drafts:
+  - Handoff Summary
+  - Call Brief
+  - Proposal Working Brief
+  - Pipeline-specific Email Draft
+- Document history with confidentiality labels
+- Workspace activity log
+- Search and filters
+- Full JSON backup / restore
 
-1. Open the repository in GitHub.
-2. In Vercel, select **Add New → Project**.
-3. Import `SacredRebel/email-outreach`.
-4. Keep the detected framework as **Next.js**.
-5. Leave the root directory as `./` and deploy.
+## Storage state
 
-No environment variables or build overrides are required for this version.
+The application is currently **local-first**. All relationship updates are persisted in browser storage and can be exported/imported as a complete JSON backup.
 
-## Local development
+The UI already contains a Shared Cloud settings section, but shared cloud sync is intentionally marked **not configured** until a real team backend is connected. Do not treat local browser storage as multi-user synchronization.
+
+A production shared backend should provide:
+
+- authentication / team access
+- shared contacts
+- interactions
+- tasks
+- documents metadata + private file storage
+- capital qualification
+- connections
+- audit history
+- realtime or near-realtime updates
+
+Supabase/Postgres is a suitable implementation path, but credentials and production access controls must be configured outside GitHub before enabling it.
+
+## Voice
+
+V1 uses the browser's speech-recognition capability when supported. No paid reasoning-model API is required for the core workflow.
+
+The app remains useful without AI:
+
+1. record / dictate or type a relationship note
+2. save it to the contact timeline
+3. create the next task
+4. hand it to the right teammate
+5. preserve the complete relationship history
+
+A later AI layer can turn transcripts into suggested structured updates, tasks, dates, capital qualification changes and draft replies. Important changes should remain human-reviewed.
+
+## Deployment
+
+To preview this duplicated repository in Vercel:
+
+1. In Vercel choose **Add New → Project**
+2. Import **SacredRebel/Contacts-Dashboard**
+3. Framework: **Next.js**
+4. Root directory: `./`
+5. Deploy
+
+The production metadata sets `robots.index=false`, but the deployment should still use Vercel protection or application authentication before sensitive relationship data is used.
+
+## Development
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-Production verification:
+Validation:
 
 ```bash
 pnpm lint
 pnpm build
 ```
 
-## Storage and privacy
+## Source files
 
-This first Vercel version stores edits and approvals in the browser that opened the dashboard. That gives the MVP immediate persistence without exposing a database or requiring account setup.
+- `data/relationship-contacts.json` — 216-contact Notion migration seed
+- `lib/relationship-types.ts` — shared domain model
+- `lib/relationship-store.ts` — local persistence, timeline/task/document helpers and generators
+- `app/dashboard.tsx` — unified operating interface
+- `app/styles/relationship-*.css` — desktop/mobile UI
+- `docs/platform-implementation.md` — architecture and rollout notes
 
-Important consequences:
+## Operating principle
 
-- Use the **Export backup** button regularly.
-- Data does not automatically appear on another browser or device.
-- Clearing site data resets the browser copy to the included reviewed research snapshot.
-- A public Vercel deployment can be opened by anyone with the URL, although each browser has its own local copy.
+A beautiful CRM that slows the team down after a call is a failed design.
 
-Before loading private client data, enable Vercel deployment protection or add application authentication.
+The successful workflow is:
 
-## Next production layer
+**Call → quick voice/text note → relationship timeline → exact next action → teammate executes → mark complete.**
 
-The repository is intentionally ready for the next controlled integrations:
-
-1. Add authenticated cloud storage for cross-device access.
-2. Add Gmail OAuth with a dedicated business mailbox.
-3. Send one self-test email.
-4. Keep manual approval as the only send trigger.
-5. Add same-thread follow-ups, unsubscribe suppression and reply tracking.
-
-Never commit Gmail credentials, OAuth tokens or Vercel secrets to this repository.
-
-## Quality gate
-
-Approval requires:
-
-1. A published contact address with its source
-2. At least one public research source
-3. Separate fact and inference fields
-4. A one-to-four-word subject
-5. A 50–100-word message
-6. Exactly one direct link
-7. No more than one low-friction question
-8. Clear opt-out language
-9. No common spam or automation phrases
-
-## Technology
-
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Radix UI
-- Sonner notifications
+Sensitive capital information follows the disclosure gate and human verification process; a reply alone never makes a capital contact qualified.
