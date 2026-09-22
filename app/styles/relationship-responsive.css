@@ -116,3 +116,18 @@
   .network-center { width: 100px; height: 100px; }
   .network-node { width: 39px; height: 39px; }
 }
+
+
+@media (max-width: 760px) {
+  .filter-row { grid-template-columns: 18px 1fr 1fr; }
+  .filter-row select:last-child { grid-column: 2 / -1; }
+  .contact-browser-modal { align-self: stretch; max-height: calc(100vh - 20px); border-radius: 16px; }
+  .contact-browser-filters { grid-template-columns: 1fr; }
+  .contact-browser-list { max-height: calc(100vh - 245px); }
+}
+
+@media (max-width: 520px) {
+  .contact-browser-tools { padding: 11px; }
+  .contact-browser-list > button { grid-template-columns: 32px minmax(0,1fr); }
+  .contact-browser-list > button > .stage { grid-column: 2; justify-self: start; }
+}
