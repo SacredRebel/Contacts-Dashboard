@@ -13,7 +13,6 @@ import {
 const STORAGE_KEY = "unified-relationship-outreach:v1";
 const LAST_SEEN_KEY = "unified-relationship-outreach:last-seen";
 const USER_KEY = "unified-relationship-outreach:active-user";
-const TEAM_CODE_KEY = "unified-relationship-outreach:team-code";
 
 type SeedShape = {
   contacts: RelationshipContact[];
@@ -92,6 +91,46 @@ export function exportWorkspace(contacts: RelationshipContact[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function csvCell(value: string | number | null | undefined) {
+  const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+export function exportContactsCsv(contacts: RelationshipContact[]) {
+  const headers = [
+    "Pipeline", "Name", "Organization", "Title", "Email", "Phone", "Stage", "Priority", "Score",
+    "Next Action", "Next Action Due", "Category", "Professional Themes", "Public Observation",
+    "Outreach Hook", "Material Fit", "Warnings",
+  ];
+  const rows = contacts.map((contact) => [
+    contact.pipeline,
+    contact.name,
+    contact.organization,
+    contact.title,
+    contact.email,
+    contact.phone,
+    contact.stage,
+    contact.priority,
+    contact.score,
+    contact.nextAction,
+    contact.nextActionDue,
+    contact.category,
+    contact.professionalThemes,
+    contact.publicObservation,
+    contact.outreachHook,
+    contact.materialFit,
+    contact.warnings,
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "relationship-contacts-" + new Date().toISOString().slice(0, 10) + ".csv";
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export async function importWorkspace(file: File): Promise<RelationshipContact[]> {
   if (file.size > 10_000_000) throw new Error("Choose a JSON file smaller than 10 MB.");
   const raw = JSON.parse(await file.text()) as WorkspaceSnapshot | RelationshipContact[];
@@ -108,16 +147,6 @@ export function activeUser(): TeamMemberId {
 
 export function setActiveUser(userId: TeamMemberId) {
   window.localStorage.setItem(USER_KEY, userId);
-}
-
-export function teamCode() {
-  if (typeof window === "undefined") return "";
-  return window.sessionStorage.getItem(TEAM_CODE_KEY) || "";
-}
-
-export function setTeamCode(value: string) {
-  if (!value) window.sessionStorage.removeItem(TEAM_CODE_KEY);
-  else window.sessionStorage.setItem(TEAM_CODE_KEY, value);
 }
 
 export function previousLastSeen() {
@@ -552,33 +581,3 @@ export function changedSince(contacts: RelationshipContact[], since: string | nu
   return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
 }
 
-async function cloudRequest(method: "GET" | "POST", contacts?: RelationshipContact[]) {
-  const code = teamCode();
-  if (!code) throw new Error("Enter the team access code in Settings first.");
-
-  const response = await fetch("/api/workspace", {
-    method,
-    headers: {
-      "content-type": "application/json",
-      "x-team-code": code,
-    },
-    body: method === "POST" ? JSON.stringify({ contacts }) : undefined,
-  });
-
-  const data = (await response.json()) as {
-    contacts?: RelationshipContact[];
-    updatedAt?: string | null;
-    error?: string;
-  };
-
-  if (!response.ok) throw new Error(data.error || "Cloud sync failed.");
-  return Array.isArray(data.contacts) ? data.contacts : [];
-}
-
-export async function pullCloud() {
-  return (await cloudRequest("GET")).map(cleanContact);
-}
-
-export async function pushCloud(contacts: RelationshipContact[]) {
-  return (await cloudRequest("POST", contacts)).map(cleanContact);
-}

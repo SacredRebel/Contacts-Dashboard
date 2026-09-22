@@ -34,7 +34,6 @@ import {
   Phone,
   Plus,
   Printer,
-  RefreshCw,
   Ruler,
   Search,
   Settings,
@@ -52,6 +51,7 @@ import {
   changedSince,
   contactHeadline,
   draftEmail,
+  exportContactsCsv,
   exportWorkspace,
   generateCallBrief,
   generateDueDiligenceRequest,
@@ -68,13 +68,9 @@ import {
   markSeen,
   nextOpenTask,
   previousLastSeen,
-  pullCloud,
-  pushCloud,
   relationshipDepth,
   saveContacts,
   setActiveUser,
-  setTeamCode,
-  teamCode,
   uid,
 } from "@/lib/relationship-store";
 import {
@@ -91,7 +87,7 @@ import {
   type TeamMemberId,
 } from "@/lib/relationship-types";
 
-type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
+type View = "home" | "contacts" | "capital" | "outreach" | "tasks" | "documents" | "network" | "activity";
 type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
 
@@ -101,6 +97,7 @@ type GeneratedDoc = {
   type: ContactDocument["type"];
   subject?: string;
   emailBody?: string;
+  sourceDocumentId?: string;
 };
 
 type SpeechResultListLike = {
@@ -200,6 +197,37 @@ function capitalBadge(profile?: CapitalProfile) {
   return "Needs verification";
 }
 
+function emailDocumentParts(document: ContactDocument) {
+  const raw = document.content || "";
+  const firstBreak = raw.indexOf("\n\n");
+  if (raw.startsWith("SUBJECT:") && firstBreak >= 0) {
+    return {
+      subject: raw.slice("SUBJECT:".length, firstBreak).trim(),
+      body: raw.slice(firstBreak + 2).trim(),
+    };
+  }
+  return {
+    subject: document.title.replace(/^(Email|Follow-up Day \d+) —\s*/, "").trim() || "Follow-up",
+    body: raw,
+  };
+}
+
+function outreachReadiness(contact: RelationshipContact) {
+  const missing: string[] = [];
+  if (!contact.email) missing.push("published email");
+  if (/NO PUBLISHED|FINAL DEEP SEARCH|UNVERIFIED/i.test(contact.emailConfidence || "")) missing.push("verified email route");
+  if (!contact.publicObservation.trim()) missing.push("public observation");
+  if (!contact.outreachHook.trim()) missing.push("outreach hook");
+  if (["hold", "inactive"].includes(contact.stage)) missing.push("active stage");
+  return { ready: missing.length === 0, missing };
+}
+
+function emailTouch(document: ContactDocument): 0 | 3 | 10 {
+  if (/day\s*10/i.test(document.title)) return 10;
+  if (/day\s*3/i.test(document.title)) return 3;
+  return 0;
+}
+
 export function Dashboard() {
   const [contacts, setContacts] = useState<RelationshipContact[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -218,8 +246,6 @@ export function Dashboard() {
   const [listening, setListening] = useState(false);
   const [generated, setGenerated] = useState<GeneratedDoc | null>(null);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
-  const [cloudCode, setCloudCode] = useState("");
-  const [cloudBusy, setCloudBusy] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [newContact, setNewContact] = useState({
     name: "",
@@ -239,7 +265,6 @@ export function Dashboard() {
       setContacts(loaded);
       setSelectedId(loaded[0]?.id || "");
       setMember(activeUser());
-      setCloudCode(teamCode());
       setLastSeen(previousLastSeen());
     }, 0);
     const seenTimer = window.setTimeout(markSeen, 3000);
@@ -358,6 +383,16 @@ export function Dashboard() {
     ).sort((a, b) => b.document.createdAt.localeCompare(a.document.createdAt));
   }, [contacts]);
 
+  const queuedEmails = useMemo(
+    () => allDocuments.filter(({ document }) => document.type === "email" && !document.sentAt),
+    [allDocuments],
+  );
+
+  const sentEmails = useMemo(
+    () => allDocuments.filter(({ document }) => document.type === "email" && document.sentAt).slice(0, 100),
+    [allDocuments],
+  );
+
   const allActivity = useMemo(() => {
     return contacts.flatMap((contact) =>
       contact.interactions.map((interaction) => ({ contact, interaction })),
@@ -371,7 +406,7 @@ export function Dashboard() {
 
   const openContact = (contact: RelationshipContact) => {
     setSelectedId(contact.id);
-    setView(contact.pipeline === "capital" && view === "capital" ? "capital" : "contacts");
+    setView(contact.pipeline === "capital" ? "capital" : "contacts");
     setMenuOpen(false);
   };
 
@@ -533,6 +568,19 @@ export function Dashboard() {
 
   const saveGenerated = () => {
     if (!selected || !generated) return;
+    if (generated.sourceDocumentId) {
+      mutateContact(selected.id, (contact) => ({
+        ...contact,
+        documents: contact.documents.map((document) =>
+          document.id === generated.sourceDocumentId
+            ? { ...document, title: generated.title, content: generated.content, approvedAt: null, approvedBy: null }
+            : document,
+        ),
+        interactions: [...contact.interactions, makeInteraction(member, "document", "Updated draft: " + generated.title + ".")],
+      }));
+      toast.success("Draft updated", { description: "Approval was reset because the content changed." });
+      return;
+    }
     const confidentiality = generated.type === "proposal" && selected.pipeline === "capital" ? "confidential" : "internal";
     const document = makeDocument(generated.title, generated.type, confidentiality, member, generated.content);
     mutateContact(selected.id, (contact) => ({
@@ -540,33 +588,63 @@ export function Dashboard() {
       documents: [...contact.documents, document],
       interactions: [...contact.interactions, makeInteraction(member, "document", "Created " + generated.title + ".")],
     }));
-    toast.success("Saved to contact file");
+    toast.success(generated.type === "email" ? "Saved to outreach queue" : "Saved to contact file");
   };
 
   const emailGenerated = () => {
-    if (!selected || !generated?.emailBody) return;
+    if (!selected || !generated || generated.type !== "email") return;
+    const draftDocument: ContactDocument = {
+      id: "preview",
+      title: generated.title,
+      type: "email",
+      confidentiality: "internal",
+      content: generated.content,
+      version: 1,
+      createdBy: member,
+      createdAt: new Date().toISOString(),
+    };
+    const parts = emailDocumentParts(draftDocument);
     const href = "mailto:" + encodeURIComponent(selected.email) +
-      "?subject=" + encodeURIComponent(generated.subject || "") +
-      "&body=" + encodeURIComponent(generated.emailBody);
+      "?subject=" + encodeURIComponent(parts.subject) +
+      "&body=" + encodeURIComponent(parts.body);
     window.location.href = href;
   };
 
   const logGeneratedEmailSent = () => {
-    if (!selected || !generated?.emailBody) return;
-    const sentAt = new Date().toISOString();
-    const document = {
-      ...makeDocument(generated.title, "email", "internal", member, generated.content),
-      sentAt,
+    if (!selected || !generated || generated.type !== "email") return;
+    const preview: ContactDocument = {
+      id: generated.sourceDocumentId || "preview",
+      title: generated.title,
+      type: "email",
+      confidentiality: "internal",
+      content: generated.content,
+      version: 1,
+      createdBy: member,
+      createdAt: new Date().toISOString(),
     };
-    mutateContact(selected.id, (contact) => ({
-      ...contact,
-      stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
-      documents: [...contact.documents, document],
-      interactions: [
-        ...contact.interactions,
-        makeInteraction(member, "email", "Email sent: " + (generated.subject || generated.title)),
-      ],
-    }));
+    const parts = emailDocumentParts(preview);
+    const sentAt = new Date().toISOString();
+    mutateContact(selected.id, (contact) => {
+      const existing = generated.sourceDocumentId
+        ? contact.documents.find((document) => document.id === generated.sourceDocumentId)
+        : null;
+      const documents = existing
+        ? contact.documents.map((document) =>
+            document.id === existing.id
+              ? { ...document, title: generated.title, content: generated.content, approvedAt: document.approvedAt || sentAt, approvedBy: document.approvedBy || member, sentAt }
+              : document,
+          )
+        : [...contact.documents, { ...makeDocument(generated.title, "email", "internal", member, generated.content), approvedAt: sentAt, approvedBy: member, sentAt }];
+      return {
+        ...contact,
+        stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
+        documents,
+        interactions: [
+          ...contact.interactions,
+          makeInteraction(member, "email", "Email sent: " + (parts.subject || generated.title)),
+        ],
+      };
+    });
     toast.success("Email logged as sent");
   };
 
@@ -690,36 +768,146 @@ export function Dashboard() {
     }
   };
 
-  const pullFromCloud = async () => {
-    setCloudBusy(true);
-    try {
-      setTeamCode(cloudCode);
-      const result = await pullCloud();
-      if (!result.length) {
-        toast.info("Cloud workspace is empty", { description: "Use Push local to cloud to seed it." });
-      } else {
-        persist(result);
-        setSelectedId(result[0]?.id || "");
-        toast.success("Cloud workspace loaded");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cloud sync failed.");
-    } finally {
-      setCloudBusy(false);
+  const createInitialOutreachDraft = (contact: RelationshipContact) => {
+    const readiness = outreachReadiness(contact);
+    if (!readiness.ready) {
+      toast.error("This contact is not ready to draft.", { description: "Missing: " + readiness.missing.join(", ") });
+      return;
     }
+    if (contact.documents.some((document) => document.type === "email")) {
+      toast.info("This contact already has outreach history.");
+      return;
+    }
+    const draft = draftEmail(contact, 0);
+    const document = makeDocument(
+      "Email — " + contact.name,
+      "email",
+      "internal",
+      member,
+      "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+    );
+    mutateContact(contact.id, (item) => ({
+      ...item,
+      stage: ["new", "research"].includes(item.stage) ? "ready" : item.stage,
+      documents: [...item.documents, document],
+      interactions: [...item.interactions, makeInteraction(member, "document", "Created Day 0 outreach draft.")],
+    }));
+    toast.success("Day 0 draft added to Outreach");
   };
 
-  const pushToCloud = async () => {
-    setCloudBusy(true);
-    try {
-      setTeamCode(cloudCode);
-      await pushCloud(contacts);
-      toast.success("Workspace pushed to cloud");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cloud sync failed.");
-    } finally {
-      setCloudBusy(false);
+  const createFollowupOutreachDraft = (contact: RelationshipContact, touch: 3 | 10) => {
+    const existing = contact.documents.some(
+      (document) => document.type === "email" && !document.sentAt && emailTouch(document) === touch,
+    );
+    if (existing) {
+      toast.info("That follow-up already has a draft in Outreach.");
+      return;
     }
+    const draft = draftEmail(contact, touch);
+    const document = makeDocument(
+      "Follow-up Day " + touch + " — " + contact.name,
+      "email",
+      "internal",
+      member,
+      "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+    );
+    mutateContact(contact.id, (item) => ({
+      ...item,
+      nextAction: "Review and send Day " + touch + " follow-up",
+      documents: [...item.documents, document],
+      interactions: [...item.interactions, makeInteraction(member, "document", "Created Day " + touch + " outreach follow-up draft.")],
+    }));
+    toast.success("Day " + touch + " draft added to Outreach");
+  };
+
+  const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
+    const parts = emailDocumentParts(document);
+    setSelectedId(contact.id);
+    setGenerated({
+      title: document.title,
+      content: document.content || "",
+      type: "email",
+      subject: parts.subject,
+      emailBody: parts.body,
+      sourceDocumentId: document.id,
+    });
+  };
+
+  const approveQueuedEmail = (contactId: string, documentId: string) => {
+    const approvedAt = new Date().toISOString();
+    mutateContact(contactId, (contact) => ({
+      ...contact,
+      documents: contact.documents.map((document) =>
+        document.id === documentId ? { ...document, approvedAt, approvedBy: member } : document,
+      ),
+      interactions: [
+        ...contact.interactions,
+        makeInteraction(member, "status", "Approved outreach draft for sending."),
+      ],
+    }));
+    toast.success("Draft approved");
+  };
+
+  const openQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
+    if (!document.approvedAt) {
+      toast.error("Approve this draft before sending.");
+      return;
+    }
+    if (!contact.email) {
+      toast.error("This contact has no published email address.");
+      return;
+    }
+    const parts = emailDocumentParts(document);
+    window.location.href =
+      "mailto:" + encodeURIComponent(contact.email) +
+      "?subject=" + encodeURIComponent(parts.subject) +
+      "&body=" + encodeURIComponent(parts.body);
+  };
+
+  const markQueuedEmailSent = (contactId: string, documentId: string) => {
+    const contact = contacts.find((item) => item.id === contactId);
+    const document = contact?.documents.find((item) => item.id === documentId);
+    if (!contact || !document || document.type !== "email") return;
+    if (!document.approvedAt) {
+      toast.error("Approve this draft before marking it sent.");
+      return;
+    }
+    const parts = emailDocumentParts(document);
+    const touch = emailTouch(document);
+    const sentAt = new Date().toISOString();
+    const nextTouch = touch === 0 ? 3 : touch === 3 ? 10 : null;
+    const followupDue = nextTouch ? new Date(Date.now() + (nextTouch === 3 ? 3 : 7) * 86_400_000).toISOString() : null;
+    mutateContact(contactId, (item) => {
+      const completedTasks = item.tasks.map((task) => {
+        if (touch === 3 && /outreach follow-up: day 3/i.test(task.title) && !["done", "canceled"].includes(task.status)) {
+          return { ...task, status: "done" as const, completedAt: sentAt };
+        }
+        if (touch === 10 && /outreach follow-up: day 10/i.test(task.title) && !["done", "canceled"].includes(task.status)) {
+          return { ...task, status: "done" as const, completedAt: sentAt };
+        }
+        return task;
+      });
+      const hasNext = nextTouch
+        ? completedTasks.some((task) => task.title.toLowerCase() === ("outreach follow-up: day " + nextTouch).toLowerCase() && !["done", "canceled"].includes(task.status))
+        : false;
+      const nextTask = nextTouch && !hasNext
+        ? makeTask("Outreach follow-up: Day " + nextTouch, member, member, followupDue)
+        : null;
+      return {
+        ...item,
+        stage: ["new", "research", "ready"].includes(item.stage) ? "contacted" : item.stage,
+        nextAction: nextTouch ? "Send Day " + nextTouch + " follow-up" : item.nextAction,
+        nextActionDue: nextTouch ? followupDue : item.nextActionDue,
+        documents: item.documents.map((doc) => doc.id === documentId ? { ...doc, sentAt } : doc),
+        tasks: nextTask ? [...completedTasks, nextTask] : completedTasks,
+        interactions: [
+          ...item.interactions,
+          makeInteraction(member, "email", "Email sent: " + (parts.subject || document.title)),
+          ...(nextTask ? [makeInteraction(member, "task", "Scheduled Day " + nextTouch + " outreach follow-up.")] : []),
+        ],
+      };
+    });
+    toast.success(nextTouch ? "Email sent · Day " + nextTouch + " follow-up scheduled" : "Email marked sent");
   };
 
   const swipe = (endX: number) => {
@@ -738,6 +926,7 @@ export function Dashboard() {
     { id: "home" as const, label: "Today", icon: <Home /> },
     { id: "contacts" as const, label: "Contacts", icon: <Users /> },
     { id: "capital" as const, label: "Capital", icon: <CircleDollarSign /> },
+    { id: "outreach" as const, label: "Outreach", icon: <Mail /> },
     { id: "tasks" as const, label: "Tasks", icon: <ListTodo /> },
     { id: "documents" as const, label: "Documents", icon: <FileText /> },
     { id: "network" as const, label: "Network", icon: <Network /> },
@@ -766,6 +955,7 @@ export function Dashboard() {
             >
               {item.icon}<span>{item.label}</span>
               {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
+              {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
             </button>
           ))}
         </nav>
@@ -782,7 +972,7 @@ export function Dashboard() {
         </div>
 
         <button className="settings-button" onClick={() => setSettingsOpen(true)}>
-          <Settings /> Settings & sync
+          <Settings /> Settings & backup
         </button>
       </aside>
 
@@ -903,6 +1093,21 @@ export function Dashboard() {
             </div>
           ) : null}
 
+          {view === "outreach" ? (
+            <OutreachView
+              contacts={contacts}
+              queued={queuedEmails}
+              sent={sentEmails}
+              onOpen={openContact}
+              onCreateDraft={createInitialOutreachDraft}
+              onCreateFollowup={createFollowupOutreachDraft}
+              onEdit={editQueuedEmail}
+              onApprove={approveQueuedEmail}
+              onOpenEmail={openQueuedEmail}
+              onMarkSent={markQueuedEmailSent}
+            />
+          ) : null}
+
           {view === "tasks" ? (
             <TasksView tasks={openTasks} member={member} onOpen={openContact} onComplete={completeTask} />
           ) : null}
@@ -1013,7 +1218,7 @@ export function Dashboard() {
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false); }}>
           <div className="modal settings-modal">
             <div className="modal-head">
-              <div><Settings /><span><strong>Settings & sync</strong><small>Team identity, backups and shared-cloud handoff.</small></span></div>
+              <div><Settings /><span><strong>Settings & backup</strong><small>Team identity, exports and local workspace restore.</small></span></div>
               <button onClick={() => setSettingsOpen(false)}><X /></button>
             </div>
 
@@ -1031,22 +1236,13 @@ export function Dashboard() {
             </section>
 
             <section className="settings-section">
-              <h3>Shared cloud</h3>
-              <p>The app is fully usable locally now. Shared sync activates after a backend is configured for this deployment. The team code is kept only in this browser session.</p>
-              <label className="stacked-label"><span>Team access code</span><input type="password" value={cloudCode} onChange={(e) => setCloudCode(e.target.value)} placeholder="Enter deployment team code" /></label>
-              <div className="button-row">
-                <button className="secondary" disabled={cloudBusy} onClick={pullFromCloud}><RefreshCw /> Pull cloud</button>
-                <button className="secondary" disabled={cloudBusy} onClick={pushToCloud}><Upload /> Push local to cloud</button>
-              </div>
-            </section>
-
-            <section className="settings-section">
-              <h3>Backup / restore</h3>
-              <p>Export includes all contacts, interactions, tasks, documents metadata, capital qualification and network links.</p>
+              <h3>Local backup / portability</h3>
+              <p>This version intentionally skips a shared backend. JSON is the complete restorable workspace; CSV is a portable contact / pipeline export for review, spreadsheets or handoff.</p>
               <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
               <div className="button-row">
-                <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export backup</button>
-                <button className="secondary" onClick={() => importRef.current?.click()}><Upload /> Import backup</button>
+                <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export JSON backup</button>
+                <button className="secondary" onClick={() => exportContactsCsv(contacts)}><Download /> Export contacts CSV</button>
+                <button className="secondary" onClick={() => importRef.current?.click()}><Upload /> Import JSON backup</button>
               </div>
             </section>
           </div>
@@ -1065,8 +1261,8 @@ export function Dashboard() {
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
-              {generated.emailBody ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
-              {generated.emailBody && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
+              {generated.type === "email" ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
+              {generated.type === "email" && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
             </div>
           </div>
         </div>
@@ -1425,6 +1621,155 @@ function ContactDetail({
             {contact.website ? <a href={contact.website} target="_blank" rel="noreferrer">Website <ExternalLink /></a> : null}
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function OutreachView({
+  contacts,
+  queued,
+  sent,
+  onOpen,
+  onCreateDraft,
+  onCreateFollowup,
+  onEdit,
+  onApprove,
+  onOpenEmail,
+  onMarkSent,
+}: {
+  contacts: RelationshipContact[];
+  queued: { contact: RelationshipContact; document: ContactDocument }[];
+  sent: { contact: RelationshipContact; document: ContactDocument }[];
+  onOpen: (contact: RelationshipContact) => void;
+  onCreateDraft: (contact: RelationshipContact) => void;
+  onCreateFollowup: (contact: RelationshipContact, touch: 3 | 10) => void;
+  onEdit: (contact: RelationshipContact, document: ContactDocument) => void;
+  onApprove: (contactId: string, documentId: string) => void;
+  onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
+  onMarkSent: (contactId: string, documentId: string) => void;
+}) {
+  const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
+  const visible = queued.filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline);
+  const readyToDraft = contacts
+    .filter((contact) => (pipeline === "all" || contact.pipeline === pipeline) && outreachReadiness(contact).ready)
+    .filter((contact) => !contact.documents.some((document) => document.type === "email"))
+    .sort((a, b) => (b.priority === "A" ? 2 : b.priority === "B" ? 1 : 0) - (a.priority === "A" ? 2 : a.priority === "B" ? 1 : 0) || b.score - a.score)
+    .slice(0, 30);
+
+  const dueFollowups = contacts.flatMap((contact) =>
+    contact.tasks
+      .filter((task) => !["done", "canceled"].includes(task.status) && isDue(task.dueAt) && /outreach follow-up: day (3|10)/i.test(task.title))
+      .map((task) => ({
+        contact,
+        task,
+        touch: /day 10/i.test(task.title) ? 10 as const : 3 as const,
+      })),
+  ).filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline)
+    .sort((a, b) => (a.task.dueAt || "").localeCompare(b.task.dueAt || ""));
+
+  return (
+    <div className="page-view">
+      <PageHero
+        icon={<Mail />}
+        eyebrow="SEND QUEUE"
+        title="Outreach"
+        text="Draft, review, send and explicitly log each email. Nothing is auto-sent from the dashboard."
+      />
+      <div className="page-filterbar compact">
+        <Mail />
+        <select value={pipeline} onChange={(event) => setPipeline(event.target.value as Pipeline | "all")}>
+          <option value="all">All pipelines</option>
+          {PIPELINES.map((item) => <option key={item} value={item}>{PIPELINE_LABELS[item]}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> waiting to send</span>
+      </div>
+
+      <div className="outreach-grid">
+        <section className="outreach-card">
+          <div className="page-card-head"><span>Drafts waiting</span><strong>{visible.length}</strong></div>
+          <div className="outreach-list">
+            {visible.map(({ contact, document }) => {
+              const parts = emailDocumentParts(document);
+              return (
+                <article key={document.id} className={document.approvedAt ? "outreach-row approved" : "outreach-row"}>
+                  <button className="outreach-contact" onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span>
+                      <strong>{contact.name}</strong>
+                      <small>{contact.organization} · {parts.subject}</small>
+                    </span>
+                  </button>
+                  <p>{parts.body.slice(0, 180)}{parts.body.length > 180 ? "…" : ""}</p>
+                  <div>
+                    <span>
+                      Created by {TEAM_MEMBERS[document.createdBy].name} · {prettyDate(document.createdAt, true)}
+                      {document.approvedAt && document.approvedBy ? " · Approved by " + TEAM_MEMBERS[document.approvedBy].name : " · Needs approval"}
+                    </span>
+                    <span className="outreach-actions">
+                      <button className="secondary" onClick={() => onEdit(contact, document)}>Edit draft</button>
+                      {!document.approvedAt ? <button className="secondary approve-draft" onClick={() => onApprove(contact.id, document.id)}><ShieldCheck /> Approve</button> : null}
+                      <button className="secondary" disabled={!contact.email || !document.approvedAt} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
+                      <button className="primary" disabled={!document.approvedAt} onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+            {!visible.length ? <EmptyMini icon={<CheckCircle2 />} title="Send queue clear" text="Save an email draft from a contact record to place it here." /> : null}
+          </div>
+        </section>
+
+        <div className="outreach-side">
+          <section className="outreach-card followup-card">
+            <div className="page-card-head"><span>Follow-ups due</span><strong>{dueFollowups.length}</strong></div>
+            <div className="ready-draft-list">
+              {dueFollowups.map(({ contact, task, touch }) => (
+                <div key={task.id}>
+                  <button onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>Day {touch} · {task.dueAt ? prettyDate(task.dueAt) : "Due now"}</small></span>
+                  </button>
+                  <button className="secondary" onClick={() => onCreateFollowup(contact, touch)}>Draft Day {touch}</button>
+                </div>
+              ))}
+              {!dueFollowups.length ? <EmptyMini icon={<CheckCircle2 />} title="No follow-ups due" text="Day 3 and Day 10 tasks appear here automatically after sends are logged." /> : null}
+            </div>
+          </section>
+
+          <section className="outreach-card">
+            <div className="page-card-head"><span>Ready to draft</span><strong>{readyToDraft.length}</strong></div>
+            <div className="ready-draft-list">
+              {readyToDraft.map((contact) => (
+                <div key={contact.id}>
+                  <button onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>{contact.organization} · Priority {contact.priority}</small></span>
+                  </button>
+                  <button className="secondary" onClick={() => onCreateDraft(contact)}>Create Day 0</button>
+                </div>
+              ))}
+              {!readyToDraft.length ? <EmptyMini icon={<CheckCircle2 />} title="No untouched ready leads" text="Contacts with verified routes, a public observation and an outreach hook appear here." /> : null}
+            </div>
+          </section>
+
+          <section className="outreach-card sent-card">
+            <div className="page-card-head"><span>Recently sent</span><strong>{sent.length}</strong></div>
+            <div className="sent-list">
+              {sent.slice(0, 30).map(({ contact, document }) => {
+                const parts = emailDocumentParts(document);
+                return (
+                  <button key={document.id} onClick={() => onOpen(contact)}>
+                    <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                    <span><strong>{contact.name}</strong><small>{parts.subject} · {document.sentAt ? prettyDate(document.sentAt, true) : ""}</small></span>
+                    <ChevronRight />
+                  </button>
+                );
+              })}
+              {!sent.length ? <EmptyMini icon={<Mail />} title="No sent log yet" text="Mark a reviewed draft as sent after it leaves your mailbox." /> : null}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

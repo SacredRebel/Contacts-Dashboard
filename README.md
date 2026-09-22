@@ -63,28 +63,17 @@ Main now includes:
   - dormant
 - Full JSON backup / restore
 
-## Storage and shared sync
+## Storage
 
-The app remains fully usable local-first. Relationship data persists in browser storage and can be exported/imported as a complete JSON backup.
+The app is intentionally **local-first** for now.
 
-The repository also includes a **server-side shared-sync bridge** that activates when a Supabase project and deployment variables are configured.
+Relationship data persists in browser storage and can be:
 
-### Shared-sync setup
+- exported as a complete JSON backup;
+- restored from JSON;
+- exported as CSV for spreadsheet review, contact cleanup or team handoff.
 
-1. Create / choose a Supabase project.
-2. Run `docs/shared-sync-snapshot.sql`.
-3. In the deployment environment set:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `TEAM_ACCESS_CODE`
-4. Redeploy.
-5. In Relationship OS → **Settings & sync**, enter the same team access code.
-6. Push the current local workspace once to seed the shared snapshot.
-7. Other team devices can then pull the same shared workspace.
-
-The browser never receives the Supabase service-role key. It stays server-side in `app/api/workspace/route.ts`.
-
-The snapshot bridge is intentionally simple and useful for initial three-person shared operation. The normalized long-term Postgres model remains documented in `docs/shared-backend-schema.sql`.
+Supabase / shared-database work is currently **skipped**. The current focus is making the operating workflow useful first: contact depth, outreach drafts, send queue, tasks, documents, verification and relationship history.
 
 ## Email state
 
@@ -121,9 +110,10 @@ To deploy:
 2. Import **SacredRebel/Contacts-Dashboard**
 3. Framework: **Next.js**
 4. Root directory: `./`
-5. Add the shared-sync environment variables if Supabase is ready.
-6. Use Vercel protection or application authentication before real sensitive relationship data is used.
-7. Deploy.
+5. Use Vercel protection or application authentication before real sensitive relationship data is used.
+6. Deploy.
+
+No database environment variables are required for the current local-first version.
 
 The app metadata sets `robots.index=false`.
 
@@ -145,12 +135,10 @@ pnpm build
 
 - `data/relationship-contacts.json` — 216-contact Notion migration seed
 - `lib/relationship-types.ts` — domain model
-- `lib/relationship-store.ts` — local persistence, relationship helpers, generators and shared-sync client
-- `app/api/workspace/route.ts` — server-only shared-sync API
+- `lib/relationship-store.ts` — local persistence, relationship helpers, generators, backups and CSV export
 - `app/dashboard.tsx` — unified operating interface
 - `app/styles/relationship-*.css` — desktop/mobile UI
 - `docs/platform-implementation.md` — architecture / rollout map
-- `docs/shared-sync-snapshot.sql` — initial shared-sync bridge
 - `docs/shared-backend-schema.sql` — normalized long-term backend schema
 
 ## Operating principle
