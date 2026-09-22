@@ -1251,10 +1251,16 @@ function ContactDetail({
             <button onClick={onDocument}><Paperclip /> Attach link</button>
           </div>
           <div className="document-actions-grid">
-            <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>Who they are, history, risks, next step</small></span></button>
+            <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>History, risks and next step</small></span></button>
             <button onClick={() => onGenerate("call")}><Phone /><span><strong>Call brief</strong><small>Context and unresolved questions</small></span></button>
-            <button onClick={() => onGenerate("proposal")}><FilePlus2 /><span><strong>Create proposal</strong><small>Build a working brief from this file</small></span></button>
-            <button onClick={() => onGenerate("email0")}><Mail /><span><strong>Draft email</strong><small>Pipeline-specific message from context</small></span></button>
+            <button onClick={() => onGenerate("meeting")}><Activity /><span><strong>Meeting notes</strong><small>Structured call / meeting template</small></span></button>
+            <button onClick={() => onGenerate("proposal")}><FilePlus2 /><span><strong>Create proposal</strong><small>Working brief from this relationship</small></span></button>
+            <button onClick={() => onGenerate("email0")}><Mail /><span><strong>Day 0 email</strong><small>Pipeline-specific first message</small></span></button>
+            <button onClick={() => onGenerate("email3")}><Mail /><span><strong>Day 3 follow-up</strong><small>One qualification / proof point</small></span></button>
+            <button onClick={() => onGenerate("email10")}><Mail /><span><strong>Day 10 close</strong><small>Clean final follow-up</small></span></button>
+            {contact.pipeline === "capital" ? <button onClick={() => onGenerate("diligence")}><ShieldCheck /><span><strong>Due diligence</strong><small>Counterparty qualification checklist</small></span></button> : null}
+            {contact.pipeline === "capital" ? <button onClick={() => onGenerate("teaser")}><FileText /><span><strong>Public teaser pack</strong><small>Disclosure-safe package checklist</small></span></button> : null}
+            {contact.pipeline !== "capital" ? <button onClick={() => onGenerate("info")}><FileText /><span><strong>Information pack</strong><small>Material / RFQ working brief</small></span></button> : null}
           </div>
           <div className="document-list">
             {contact.documents.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8).map((document) => (
