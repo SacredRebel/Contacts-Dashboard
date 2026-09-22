@@ -202,3 +202,7 @@ button.primary:hover { background: #2d503c; }
   .outreach-actions { justify-content: stretch; }
   .outreach-actions button { flex: 1; justify-content: center; }
 }
+
+.outreach-row.approved { background: linear-gradient(90deg, rgba(233,246,237,.7), #fff 34%); }
+.outreach-row.approved > p { border-left-color: #8fb59a; }
+.approve-draft { border-color: #bfd8c6 !important; background: #f1f9f3 !important; color: #2f6f4c !important; }
