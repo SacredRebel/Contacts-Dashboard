@@ -450,24 +450,45 @@ export function Dashboard() {
     toast.success("Connection added");
   };
 
-  const showGenerated = (kind: "handoff" | "call" | "proposal" | "email") => {
+  const showGenerated = (kind: GeneratedKind) => {
     if (!selected) return;
     if (kind === "handoff") {
       setGenerated({ title: "Handoff — " + selected.name, content: generateHandoff(selected), type: "handoff" });
-    } else if (kind === "call") {
-      setGenerated({ title: "Call Brief — " + selected.name, content: generateCallBrief(selected), type: "call_brief" });
-    } else if (kind === "proposal") {
-      setGenerated({ title: "Proposal Working Brief — " + selected.name, content: generateProposalBrief(selected), type: "proposal" });
-    } else {
-      const draft = draftEmail(selected);
-      setGenerated({
-        title: "Email — " + selected.name,
-        content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
-        type: "email",
-        subject: draft.subject,
-        emailBody: draft.body,
-      });
+      return;
     }
+    if (kind === "call") {
+      setGenerated({ title: "Call Brief — " + selected.name, content: generateCallBrief(selected), type: "call_brief" });
+      return;
+    }
+    if (kind === "proposal") {
+      setGenerated({ title: "Proposal Working Brief — " + selected.name, content: generateProposalBrief(selected), type: "proposal" });
+      return;
+    }
+    if (kind === "meeting") {
+      setGenerated({ title: "Meeting Notes — " + selected.name, content: generateMeetingNotes(selected), type: "meeting_notes" });
+      return;
+    }
+    if (kind === "diligence") {
+      setGenerated({ title: "Due Diligence — " + selected.name, content: generateDueDiligenceRequest(selected), type: "due_diligence" });
+      return;
+    }
+    if (kind === "teaser") {
+      setGenerated({ title: "Public Teaser Package — " + selected.name, content: generatePublicTeaserPackage(selected), type: "public_teaser" });
+      return;
+    }
+    if (kind === "info") {
+      setGenerated({ title: "Information Pack — " + selected.name, content: generateInformationPack(selected), type: "info_pack" });
+      return;
+    }
+    const touch = kind === "email3" ? 3 : kind === "email10" ? 10 : 0;
+    const draft = draftEmail(selected, touch);
+    setGenerated({
+      title: (touch ? "Follow-up Day " + touch : "Email") + " — " + selected.name,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      type: "email",
+      subject: draft.subject,
+      emailBody: draft.body,
+    });
   };
 
   const saveGenerated = () => {
