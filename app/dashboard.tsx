@@ -92,7 +92,9 @@ import {
 } from "@/lib/relationship-types";
 
 type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
-type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";\n\ntype GeneratedDoc = {
+type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
+
+type GeneratedDoc = {
   title: string;
   content: string;
   type: ContactDocument["type"];
@@ -801,7 +803,7 @@ export function Dashboard() {
                     ) : null}
                     <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
                       <option value="all">All stages</option>
-                      {PIPELINE_STAGES[contact.pipeline].map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                      {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
                     </select>
                   </div>
                   <div className="list-summary"><strong>{filtered.length}</strong> contacts</div>
