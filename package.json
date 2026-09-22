@@ -1,8 +1,10 @@
 {
-  "name": "pauls-outreach-command-center",
-  "version": "1.0.0",
+  "name": "relationship-outreach-os",
+  "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=20.9.0" },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
