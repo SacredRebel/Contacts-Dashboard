@@ -139,7 +139,8 @@ pnpm build
 - `app/dashboard.tsx` — unified operating interface
 - `app/styles/relationship-*.css` — desktop/mobile UI
 - `docs/platform-implementation.md` — architecture / rollout map
-- `docs/shared-backend-schema.sql` — normalized long-term backend schema
+- `docs/daily-operating-workflow.md` — exact Paul / Mark / Jonathan daily operating loop
+- `docs/shared-backend-schema.sql` — deferred long-term backend reference
 
 ## Operating principle
 
