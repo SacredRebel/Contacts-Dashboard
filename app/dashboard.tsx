@@ -37,6 +37,8 @@ import {
   Ruler,
   Search,
   Settings,
+  Sun,
+  Moon,
   ShieldCheck,
   Sparkles,
   Upload,
@@ -88,6 +90,7 @@ import {
 } from "@/lib/relationship-types";
 
 type View = "home" | "contacts" | "capital" | "outreach" | "tasks" | "documents" | "network" | "activity";
+type ThemeMode = "light" | "dark";
 type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
 
@@ -238,6 +241,7 @@ export function Dashboard() {
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [member, setMember] = useState<TeamMemberId>("paul");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>("light");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileBrowseOpen, setMobileBrowseOpen] = useState(false);
@@ -266,6 +270,8 @@ export function Dashboard() {
       setSelectedId(loaded[0]?.id || "");
       setMember(activeUser());
       setLastSeen(previousLastSeen());
+      const savedTheme = window.localStorage.getItem("relationship-os-theme");
+      setTheme(savedTheme === "dark" ? "dark" : "light");
     }, 0);
     const seenTimer = window.setTimeout(markSeen, 3000);
     return () => {
@@ -403,6 +409,14 @@ export function Dashboard() {
     setMember(id);
     setActiveUser(id);
   };
+  const toggleTheme = () => {
+    setTheme((current) => {
+      const next = current === "light" ? "dark" : "light";
+      window.localStorage.setItem("relationship-os-theme", next);
+      return next;
+    });
+  };
+
 
   const openContact = (contact: RelationshipContact) => {
     setSelectedId(contact.id);
@@ -934,7 +948,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="relationship-app">
+    <div className="relationship-app" data-theme={theme}>
       <Toaster richColors position="bottom-right" />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
@@ -991,6 +1005,9 @@ export function Dashboard() {
                 </span>
               ))}
             </div>
+            <button className="icon-action theme-toggle" onClick={toggleTheme} title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}>
+              {theme === "light" ? <Moon /> : <Sun />}
+            </button>
             <button className="icon-action" onClick={() => setMobileBrowseOpen(true)} title="Browse contacts"><Search /></button>
             <button className="icon-action" onClick={() => setQuickAddOpen(true)} title="Add contact"><Plus /></button>
             <button className="primary-action" onClick={() => selected ? startVoice() : setView("contacts")}>
@@ -1125,6 +1142,18 @@ export function Dashboard() {
           ) : null}
         </main>
       </div>
+
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Home /><span>Today</span></button>
+        <button className={view === "contacts" || view === "capital" ? "active" : ""} onClick={() => setView("contacts")}><Users /><span>Contacts</span></button>
+        <button className={view === "outreach" ? "active" : ""} onClick={() => setView("outreach")}>
+          <Mail /><span>Outreach</span>{queuedEmails.length ? <em>{queuedEmails.length}</em> : null}
+        </button>
+        <button className={view === "tasks" ? "active" : ""} onClick={() => setView("tasks")}>
+          <ListTodo /><span>Tasks</span>{metrics.due ? <em>{metrics.due}</em> : null}
+        </button>
+        <button onClick={() => setMenuOpen(true)}><Menu /><span>More</span></button>
+      </nav>
 
       {mobileBrowseOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileBrowseOpen(false); }}>
