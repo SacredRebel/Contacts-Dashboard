@@ -1143,6 +1143,18 @@ export function Dashboard() {
         </main>
       </div>
 
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Home /><span>Today</span></button>
+        <button className={view === "contacts" || view === "capital" ? "active" : ""} onClick={() => setView("contacts")}><Users /><span>Contacts</span></button>
+        <button className={view === "outreach" ? "active" : ""} onClick={() => setView("outreach")}>
+          <Mail /><span>Outreach</span>{queuedEmails.length ? <em>{queuedEmails.length}</em> : null}
+        </button>
+        <button className={view === "tasks" ? "active" : ""} onClick={() => setView("tasks")}>
+          <ListTodo /><span>Tasks</span>{metrics.due ? <em>{metrics.due}</em> : null}
+        </button>
+        <button onClick={() => setMenuOpen(true)}><Menu /><span>More</span></button>
+      </nav>
+
       {mobileBrowseOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileBrowseOpen(false); }}>
           <div className="modal contact-browser-modal">
