@@ -1211,6 +1211,7 @@ function ContactDetail({
   const depth = relationshipDepth(contact);
   const primaryTask = nextOpenTask(contact);
   const timeline = [...contact.interactions].sort((a, b) => b.at.localeCompare(a.at));
+  const lastInteraction = timeline[0];
   const index = filtered.findIndex((item) => item.id === contact.id);
   const phoneOk = validPhone(contact.phone);
   const connected = contact.connections.map((connection) => ({
@@ -1242,6 +1243,7 @@ function ContactDetail({
           <h1>{contact.name}</h1>
           <p>{contact.title || contact.category}{contact.organization ? " · " + contact.organization : ""}</p>
           {contact.location ? <small><MapPin /> {contact.location}</small> : null}
+          {lastInteraction ? <small className="last-interaction"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
         </div>
         <div className="stage-control">
           <span>Relationship stage</span>
@@ -1261,6 +1263,7 @@ function ContactDetail({
       </div>
 
       <div className="detail-body">
+        {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
         <section className="next-action-card">
           <div className="section-head">
             <div><TargetIcon /><span><strong>Next best action</strong><small>The one thing nobody should have to guess</small></span></div>
