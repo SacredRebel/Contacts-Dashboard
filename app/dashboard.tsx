@@ -78,6 +78,7 @@ import {
 } from "@/lib/relationship-store";
 import {
   PIPELINE_LABELS,
+  PIPELINE_STAGES,
   STAGE_LABELS,
   TEAM_MEMBERS,
   type CapitalProfile,
