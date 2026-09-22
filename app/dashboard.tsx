@@ -50,11 +50,16 @@ import { Toaster } from "@/components/ui/sonner";
 import {
   activeUser,
   changedSince,
+  contactHeadline,
   draftEmail,
   exportWorkspace,
   generateCallBrief,
+  generateDueDiligenceRequest,
   generateHandoff,
+  generateInformationPack,
+  generateMeetingNotes,
   generateProposalBrief,
+  generatePublicTeaserPackage,
   importWorkspace,
   loadContacts,
   makeDocument,
@@ -74,6 +79,7 @@ import {
 } from "@/lib/relationship-store";
 import {
   PIPELINE_LABELS,
+  PIPELINE_STAGES,
   STAGE_LABELS,
   TEAM_MEMBERS,
   type CapitalProfile,
@@ -86,6 +92,9 @@ import {
 } from "@/lib/relationship-types";
 
 type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
+type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
+type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
+
 type GeneratedDoc = {
   title: string;
   content: string;
@@ -144,6 +153,24 @@ function isDue(value?: string | null) {
   return due <= end;
 }
 
+function isToday(value?: string | null) {
+  if (!value) return false;
+  const due = new Date(value);
+  const start = new Date();
+  const end = new Date();
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return due >= start && due <= end;
+}
+
+function isOverdue(value?: string | null) {
+  if (!value) return false;
+  const due = new Date(value);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return due < start;
+}
+
 function validPhone(value: string) {
   return value.replace(/\D/g, "").length >= 7;
 }
@@ -180,10 +207,12 @@ export function Dashboard() {
   const [query, setQuery] = useState("");
   const [pipelineFilter, setPipelineFilter] = useState<Pipeline | "all">("all");
   const [stageFilter, setStageFilter] = useState<RelationshipStage | "all">("all");
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [member, setMember] = useState<TeamMemberId>("paul");
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [mobileBrowseOpen, setMobileBrowseOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voiceText, setVoiceText] = useState("");
   const [listening, setListening] = useState(false);
@@ -256,24 +285,41 @@ export function Dashboard() {
           ? contact.pipeline === "capital"
           : pipelineFilter === "all" || contact.pipeline === pipelineFilter;
         const stageMatch = stageFilter === "all" || contact.stage === stageFilter;
+        const open = contact.tasks.filter((task) => !["done", "canceled"].includes(task.status));
+        const queueMatch =
+          queueFilter === "all" ||
+          (queueFilter === "due_today" && (isToday(contact.nextActionDue) || open.some((task) => isToday(task.dueAt)))) ||
+          (queueFilter === "overdue" && (isOverdue(contact.nextActionDue) || open.some((task) => isOverdue(task.dueAt)))) ||
+          (queueFilter === "assigned_to_me" && open.some((task) => task.assignedTo === member)) ||
+          (queueFilter === "high_priority" && contact.priority === "A") ||
+          (queueFilter === "direct_capital" && contact.pipeline === "capital" && /direct|managed|authorized/i.test(contact.capital?.directness || "")) ||
+          (queueFilter === "intermediary" && contact.pipeline === "capital" && /broker|introducer|representative|network/i.test(contact.capital?.directness || "")) ||
+          (queueFilter === "dormant" && relationshipDepth(contact).label === "Dormant");
         const haystack = [
           contact.name,
           contact.organization,
           contact.title,
           contact.email,
           contact.phone,
+          contact.website,
+          contact.linkedin,
           contact.category,
           contact.professionalThemes,
           contact.publicObservation,
+          contact.outreachHook,
+          contact.materialFit,
+          contact.warnings,
           contact.alignmentTags.join(" "),
+          ...contact.interactions.flatMap((item) => [item.summary, item.transcript || ""]),
+          ...contact.documents.flatMap((document) => [document.title, document.content || ""]),
         ].join(" ").toLowerCase();
-        return pipelineMatch && stageMatch && (!needle || haystack.includes(needle));
+        return pipelineMatch && stageMatch && queueMatch && (!needle || haystack.includes(needle));
       })
       .sort((a, b) => {
         const priority = { A: 3, B: 2, C: 1 } as Record<string, number>;
         return (priority[b.priority] || 0) - (priority[a.priority] || 0) || b.score - a.score;
       });
-  }, [contacts, pipelineFilter, query, stageFilter, view]);
+  }, [contacts, member, pipelineFilter, query, queueFilter, stageFilter, view]);
 
   useEffect(() => {
     if (view !== "contacts" && view !== "capital") return;
@@ -444,24 +490,45 @@ export function Dashboard() {
     toast.success("Connection added");
   };
 
-  const showGenerated = (kind: "handoff" | "call" | "proposal" | "email") => {
+  const showGenerated = (kind: GeneratedKind) => {
     if (!selected) return;
     if (kind === "handoff") {
       setGenerated({ title: "Handoff — " + selected.name, content: generateHandoff(selected), type: "handoff" });
-    } else if (kind === "call") {
-      setGenerated({ title: "Call Brief — " + selected.name, content: generateCallBrief(selected), type: "call_brief" });
-    } else if (kind === "proposal") {
-      setGenerated({ title: "Proposal Working Brief — " + selected.name, content: generateProposalBrief(selected), type: "proposal" });
-    } else {
-      const draft = draftEmail(selected);
-      setGenerated({
-        title: "Email — " + selected.name,
-        content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
-        type: "email",
-        subject: draft.subject,
-        emailBody: draft.body,
-      });
+      return;
     }
+    if (kind === "call") {
+      setGenerated({ title: "Call Brief — " + selected.name, content: generateCallBrief(selected), type: "call_brief" });
+      return;
+    }
+    if (kind === "proposal") {
+      setGenerated({ title: "Proposal Working Brief — " + selected.name, content: generateProposalBrief(selected), type: "proposal" });
+      return;
+    }
+    if (kind === "meeting") {
+      setGenerated({ title: "Meeting Notes — " + selected.name, content: generateMeetingNotes(selected), type: "meeting_notes" });
+      return;
+    }
+    if (kind === "diligence") {
+      setGenerated({ title: "Due Diligence — " + selected.name, content: generateDueDiligenceRequest(selected), type: "due_diligence" });
+      return;
+    }
+    if (kind === "teaser") {
+      setGenerated({ title: "Public Teaser Package — " + selected.name, content: generatePublicTeaserPackage(selected), type: "public_teaser" });
+      return;
+    }
+    if (kind === "info") {
+      setGenerated({ title: "Information Pack — " + selected.name, content: generateInformationPack(selected), type: "info_pack" });
+      return;
+    }
+    const touch = kind === "email3" ? 3 : kind === "email10" ? 10 : 0;
+    const draft = draftEmail(selected, touch);
+    setGenerated({
+      title: (touch ? "Follow-up Day " + touch : "Email") + " — " + selected.name,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      type: "email",
+      subject: draft.subject,
+      emailBody: draft.body,
+    });
   };
 
   const saveGenerated = () => {
@@ -482,6 +549,25 @@ export function Dashboard() {
       "?subject=" + encodeURIComponent(generated.subject || "") +
       "&body=" + encodeURIComponent(generated.emailBody);
     window.location.href = href;
+  };
+
+  const logGeneratedEmailSent = () => {
+    if (!selected || !generated?.emailBody) return;
+    const sentAt = new Date().toISOString();
+    const document = {
+      ...makeDocument(generated.title, "email", "internal", member, generated.content),
+      sentAt,
+    };
+    mutateContact(selected.id, (contact) => ({
+      ...contact,
+      stage: ["new", "research", "ready"].includes(contact.stage) ? "contacted" : contact.stage,
+      documents: [...contact.documents, document],
+      interactions: [
+        ...contact.interactions,
+        makeInteraction(member, "email", "Email sent: " + (generated.subject || generated.title)),
+      ],
+    }));
+    toast.success("Email logged as sent");
   };
 
   const startVoice = () => {
@@ -715,6 +801,7 @@ export function Dashboard() {
                 </span>
               ))}
             </div>
+            <button className="icon-action" onClick={() => setMobileBrowseOpen(true)} title="Browse contacts"><Search /></button>
             <button className="icon-action" onClick={() => setQuickAddOpen(true)} title="Add contact"><Plus /></button>
             <button className="primary-action" onClick={() => selected ? startVoice() : setView("contacts")}>
               <Mic /> <span>Voice update</span>
@@ -754,6 +841,16 @@ export function Dashboard() {
                     <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
                       <option value="all">All stages</option>
                       {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                    </select>
+                    <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)}>
+                      <option value="all">All queues</option>
+                      <option value="due_today">Due today</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="assigned_to_me">Assigned to me</option>
+                      <option value="high_priority">High priority</option>
+                      <option value="direct_capital">Direct capital</option>
+                      <option value="intermediary">Intermediaries</option>
+                      <option value="dormant">Dormant</option>
                     </select>
                   </div>
                   <div className="list-summary"><strong>{filtered.length}</strong> contacts</div>
@@ -823,6 +920,53 @@ export function Dashboard() {
           ) : null}
         </main>
       </div>
+
+      {mobileBrowseOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileBrowseOpen(false); }}>
+          <div className="modal contact-browser-modal">
+            <div className="modal-head">
+              <div><Search /><span><strong>Browse contacts</strong><small>Search or filter, then return to the swipe deck.</small></span></div>
+              <button onClick={() => setMobileBrowseOpen(false)}><X /></button>
+            </div>
+            <div className="contact-browser-tools">
+              <div className="search-input">
+                <Search />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Person, company, email, phone, tag…" />
+              </div>
+              <div className="contact-browser-filters">
+                <select value={pipelineFilter} onChange={(event) => setPipelineFilter(event.target.value as Pipeline | "all")}>
+                  <option value="all">All pipelines</option>
+                  {PIPELINES.map((pipeline) => <option key={pipeline} value={pipeline}>{PIPELINE_LABELS[pipeline]}</option>)}
+                </select>
+                <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
+                  <option value="all">All stages</option>
+                  {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                </select>
+                <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)}>
+                  <option value="all">All queues</option>
+                  <option value="due_today">Due today</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="assigned_to_me">Assigned to me</option>
+                  <option value="high_priority">High priority</option>
+                  <option value="direct_capital">Direct capital</option>
+                  <option value="intermediary">Intermediaries</option>
+                  <option value="dormant">Dormant</option>
+                </select>
+              </div>
+            </div>
+            <div className="contact-browser-list">
+              {filtered.map((contact) => (
+                <button key={contact.id} onClick={() => { setSelectedId(contact.id); setView(contact.pipeline === "capital" ? "capital" : "contacts"); setMobileBrowseOpen(false); }}>
+                  <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                  <span><strong>{contact.name}</strong><small>{contact.organization} · {contactHeadline(contact)}</small></span>
+                  <em className={"stage stage-" + contact.stage}>{STAGE_LABELS[contact.stage]}</em>
+                </button>
+              ))}
+              {!filtered.length ? <EmptyMini icon={<Search />} title="No contacts match" text="Change the search or filters." /> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {voiceOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setVoiceOpen(false); }}>
@@ -921,6 +1065,7 @@ export function Dashboard() {
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
+              {generated.emailBody ? <button className="secondary" onClick={logGeneratedEmailSent}><CheckCircle2 /> Log sent</button> : null}
               {generated.emailBody && selected?.email ? <button className="primary" onClick={emailGenerated}><Mail /> Open email</button> : null}
             </div>
           </div>
@@ -1060,12 +1205,13 @@ function ContactDetail({
   onTask: () => void;
   onDocument: () => void;
   onConnection: () => void;
-  onGenerate: (kind: "handoff" | "call" | "proposal" | "email") => void;
+  onGenerate: (kind: GeneratedKind) => void;
   onLog: (type: Interaction["type"], summary: string, transcript?: string) => void;
 }) {
   const depth = relationshipDepth(contact);
   const primaryTask = nextOpenTask(contact);
   const timeline = [...contact.interactions].sort((a, b) => b.at.localeCompare(a.at));
+  const lastInteraction = timeline[0];
   const index = filtered.findIndex((item) => item.id === contact.id);
   const phoneOk = validPhone(contact.phone);
   const connected = contact.connections.map((connection) => ({
@@ -1097,11 +1243,12 @@ function ContactDetail({
           <h1>{contact.name}</h1>
           <p>{contact.title || contact.category}{contact.organization ? " · " + contact.organization : ""}</p>
           {contact.location ? <small><MapPin /> {contact.location}</small> : null}
+          {lastInteraction ? <small className="last-interaction"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
         </div>
         <div className="stage-control">
           <span>Relationship stage</span>
           <select value={contact.stage} onChange={(event) => onStage(event.target.value as RelationshipStage)}>
-            {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+            {PIPELINE_STAGES[contact.pipeline].map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
           </select>
         </div>
       </header>
@@ -1111,11 +1258,12 @@ function ContactDetail({
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
         <button onClick={onVoice}><Mic /><span>Voice note</span></button>
-        <button onClick={() => onGenerate("email")}><Sparkles /><span>Draft email</span></button>
+        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft email</span></button>
         <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
       </div>
 
       <div className="detail-body">
+        {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
         <section className="next-action-card">
           <div className="section-head">
             <div><TargetIcon /><span><strong>Next best action</strong><small>The one thing nobody should have to guess</small></span></div>
@@ -1205,10 +1353,16 @@ function ContactDetail({
             <button onClick={onDocument}><Paperclip /> Attach link</button>
           </div>
           <div className="document-actions-grid">
-            <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>Who they are, history, risks, next step</small></span></button>
+            <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>History, risks and next step</small></span></button>
             <button onClick={() => onGenerate("call")}><Phone /><span><strong>Call brief</strong><small>Context and unresolved questions</small></span></button>
-            <button onClick={() => onGenerate("proposal")}><FilePlus2 /><span><strong>Create proposal</strong><small>Build a working brief from this file</small></span></button>
-            <button onClick={() => onGenerate("email")}><Mail /><span><strong>Draft email</strong><small>Pipeline-specific message from context</small></span></button>
+            <button onClick={() => onGenerate("meeting")}><Activity /><span><strong>Meeting notes</strong><small>Structured call / meeting template</small></span></button>
+            <button onClick={() => onGenerate("proposal")}><FilePlus2 /><span><strong>Create proposal</strong><small>Working brief from this relationship</small></span></button>
+            <button onClick={() => onGenerate("email0")}><Mail /><span><strong>Day 0 email</strong><small>Pipeline-specific first message</small></span></button>
+            <button onClick={() => onGenerate("email3")}><Mail /><span><strong>Day 3 follow-up</strong><small>One qualification / proof point</small></span></button>
+            <button onClick={() => onGenerate("email10")}><Mail /><span><strong>Day 10 close</strong><small>Clean final follow-up</small></span></button>
+            {contact.pipeline === "capital" ? <button onClick={() => onGenerate("diligence")}><ShieldCheck /><span><strong>Due diligence</strong><small>Counterparty qualification checklist</small></span></button> : null}
+            {contact.pipeline === "capital" ? <button onClick={() => onGenerate("teaser")}><FileText /><span><strong>Public teaser pack</strong><small>Disclosure-safe package checklist</small></span></button> : null}
+            {contact.pipeline !== "capital" ? <button onClick={() => onGenerate("info")}><FileText /><span><strong>Information pack</strong><small>Material / RFQ working brief</small></span></button> : null}
           </div>
           <div className="document-list">
             {contact.documents.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8).map((document) => (

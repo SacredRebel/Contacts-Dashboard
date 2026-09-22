@@ -77,6 +77,9 @@ export type ContactDocument = {
     | "quote"
     | "catalog"
     | "meeting_notes"
+    | "due_diligence"
+    | "info_pack"
+    | "public_teaser"
     | "call_brief"
     | "handoff"
     | "email"
@@ -219,4 +222,11 @@ export const PIPELINE_LABELS: Record<Pipeline, string> = {
   capital: "Capital",
   architect: "Architects",
   contractor: "Contractors",
+};
+
+
+export const PIPELINE_STAGES: Record<Pipeline, RelationshipStage[]> = {
+  capital: ["new", "research", "ready", "contacted", "replied", "verification", "qualified", "call", "nda", "diligence", "proposal", "active", "won", "nurture", "hold", "inactive"],
+  architect: ["new", "research", "ready", "contacted", "replied", "qualified", "call", "proposal", "active", "won", "nurture", "hold", "inactive"],
+  contractor: ["new", "research", "ready", "contacted", "replied", "qualified", "call", "proposal", "active", "won", "nurture", "hold", "inactive"],
 };

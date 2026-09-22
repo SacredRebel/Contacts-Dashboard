@@ -126,3 +126,17 @@ button.primary:hover { background: #2d503c; }
   .modal-head button, .document-actions { display: none !important; }
   .document-editor { width: 100%; min-height: 0; margin: 0; border: 0; background: #fff; }
 }
+
+
+/* Contact browser / queue picker */
+.contact-browser-modal { width: min(780px, 100%); }
+.contact-browser-tools { padding: 14px; border-bottom: 1px solid #e5eae6; background: #fafbfa; }
+.contact-browser-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin-top: 8px; }
+.contact-browser-filters select { width: 100%; min-height: 36px; padding: 0 9px; color: #5d6a61; font-size: 9px; }
+.contact-browser-list { max-height: min(62vh, 620px); overflow-y: auto; }
+.contact-browser-list > button { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; gap: 9px; align-items: center; width: 100%; min-height: 58px; padding: 10px 14px; border: 0; border-bottom: 1px solid #edf0ed; background: #fff; text-align: left; }
+.contact-browser-list > button:hover { background: #f8faf8; }
+.contact-browser-list > button > span:nth-child(2) { min-width: 0; }
+.contact-browser-list strong, .contact-browser-list small { display: block; }
+.contact-browser-list strong { overflow: hidden; color: #435047; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.contact-browser-list small { margin-top: 3px; overflow: hidden; color: #8a958e; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }

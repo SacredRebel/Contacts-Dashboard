@@ -319,8 +319,164 @@ export function generateProposalBrief(contact: RelationshipContact) {
   ].join("\n");
 }
 
-export function draftEmail(contact: RelationshipContact) {
+export function generateMeetingNotes(contact: RelationshipContact) {
+  return [
+    "MEETING / CALL NOTES — " + intro(contact),
+    "",
+    "Date",
+    new Date().toLocaleString(),
+    "",
+    "People present",
+    contact.name + (contact.organization ? " — " + contact.organization : ""),
+    "",
+    "Context",
+    contact.publicObservation || contact.outreachHook || "Add context.",
+    "",
+    "Discussion",
+    "",
+    "Decisions / commitments",
+    "",
+    "Documents requested",
+    "",
+    "Open questions",
+    contact.capital
+      ? "• Direct principal / intermediary?\n• Actual decision-maker?\n• Mandate and size?\n• Capacity / proof status?\n• Safe disclosure level?"
+      : "• Who owns the next decision?\n• What exact project / sourcing need exists?\n• What is the agreed next step?",
+    "",
+    "Next action",
+    contactHeadline(contact),
+  ].join("\n");
+}
+
+export function generateDueDiligenceRequest(contact: RelationshipContact) {
+  const capital = contact.capital;
+  return [
+    "DUE-DILIGENCE / QUALIFICATION WORKING REQUEST",
+    "",
+    "Counterparty: " + intro(contact),
+    "",
+    "Purpose",
+    "Confirm identity, transaction authority, mandate and appropriate financial capacity before advancing sensitive diligence.",
+    "",
+    "Items to confirm",
+    "• Legal entity / operating entity",
+    "• Current role and authority",
+    "• Direct principal, managed capital, broker, introducer or representative",
+    "• Actual transaction decision-maker",
+    "• Investment / lending mandate",
+    "• Typical transaction size and current appetite",
+    "• Geography and asset / project fit",
+    "• Expected timing and internal approval process",
+    "• Appropriate evidence of capacity / proof of funds when warranted",
+    "• Any intermediary economics / fees disclosed before diligence",
+    "",
+    "Current platform status",
+    "Directness: " + (capital?.directness || "Unknown"),
+    "Decision-maker: " + (capital?.decisionMakerStatus || "Unknown"),
+    "Entity: " + (capital?.entityStatus || "Pending"),
+    "Capacity: " + (capital?.capacityStatus || "Not requested"),
+    "Disclosure: " + (capital?.disclosureLevel || "Public only"),
+    "",
+    "Important",
+    "This is a working checklist. Use counsel / transaction-specific judgment before requesting or sharing regulated, confidential or sensitive financial material.",
+  ].join("\n");
+}
+
+export function generatePublicTeaserPackage(contact: RelationshipContact) {
+  return [
+    "PUBLIC TEASER PACKAGE — WORKING COVER",
+    "",
+    "Prepared for: " + intro(contact),
+    "",
+    "Permitted level",
+    "PUBLIC / NON-CONFIDENTIAL ONLY",
+    "",
+    "Why this outreach may fit",
+    contact.publicObservation || contact.professionalThemes || contact.outreachHook || "Public alignment to be confirmed.",
+    "",
+    "Package checklist",
+    "• Public project teaser",
+    "• High-level development vision",
+    "• Public location / market context only as approved",
+    "• High-level use-of-funds framing only as approved",
+    "• Contact / call request",
+    "",
+    "Do not include at this stage",
+    "• Raw title / ownership records",
+    "• Non-public debt or lender records",
+    "• Private appraisals",
+    "• Bank statements / reserves",
+    "• Confidential partner information",
+    "• Data-room access",
+    "",
+    "Next gate",
+    "Verify identity, role and fit before increasing disclosure.",
+  ].join("\n");
+}
+
+export function generateInformationPack(contact: RelationshipContact) {
+  const audience = contact.pipeline === "architect" ? "ARCHITECT" : "CONTRACTOR / BUILDER";
+  return [
+    audience + " INFORMATION PACK — WORKING BRIEF",
+    "",
+    "Prepared for: " + intro(contact),
+    "",
+    "Public project / professional context",
+    contact.publicObservation || "Add verified public context.",
+    "",
+    "Relevant professional themes",
+    contact.professionalThemes || "To be confirmed.",
+    "",
+    "Potential material / sourcing fit",
+    contact.materialFit || contact.outreachHook || "To be confirmed.",
+    "",
+    "Suggested package",
+    "• Short European material overview",
+    "• RFQ / sourcing process",
+    "• Product categories relevant to their work",
+    "• Lead-time / logistics questions to confirm",
+    "• Route to quote / specification conversation",
+    "",
+    "Next action",
+    contactHeadline(contact),
+  ].join("\n");
+}
+
+export function draftEmail(contact: RelationshipContact, touch: 0 | 3 | 10 = 0) {
   const first = contact.name && !/team|desk|office|contact/i.test(contact.name) ? contact.name.split(" ")[0] : "there";
+
+  if (touch === 3) {
+    if (contact.pipeline === "capital") {
+      return {
+        subject: "re: regenerative real estate",
+        body:
+          "Hi " + first + ",\n\n" +
+          "Following up with one point that may help determine fit: we are screening for the actual capital role and mandate before moving beyond public materials. " +
+          "If this is within your lane, could you tell me whether you participate directly or as an advisor / introducer, and the rough transaction range you typically consider?\n\nPaul",
+      };
+    }
+    return {
+      subject: contact.pipeline === "architect" ? "re: material collaboration" : "re: project sourcing",
+      body:
+        "Hi " + first + ",\n\n" +
+        "One quick follow-up: " +
+        (contact.materialFit || contact.outreachHook || "the sourcing / project fit") +
+        " is the reason I thought this could be relevant. " +
+        "If there is a better person for specifications, procurement or RFQs, I’m happy to contact them instead.\n\nPaul",
+    };
+  }
+
+  if (touch === 10) {
+    return {
+      subject: contact.pipeline === "capital" ? "close the loop" : "close the loop",
+      body:
+        "Hi " + first + ",\n\n" +
+        "I’ll close the loop after this. If " +
+        (contact.pipeline === "capital" ? "this type of opportunity is outside your mandate" : "this is not relevant to your current projects") +
+        ", no problem. If there is a better person or a later time, a quick direction is enough.\n\nPaul",
+    };
+  }
+
   if (contact.pipeline === "capital") {
     const directness = contact.capital?.directness || "Unknown";
     const qualifier =
