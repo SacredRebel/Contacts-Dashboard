@@ -761,6 +761,7 @@ export function Dashboard() {
                 </span>
               ))}
             </div>
+            <button className="icon-action" onClick={() => setMobileBrowseOpen(true)} title="Browse contacts"><Search /></button>
             <button className="icon-action" onClick={() => setQuickAddOpen(true)} title="Add contact"><Plus /></button>
             <button className="primary-action" onClick={() => selected ? startVoice() : setView("contacts")}>
               <Mic /> <span>Voice update</span>
@@ -869,6 +870,43 @@ export function Dashboard() {
           ) : null}
         </main>
       </div>
+
+      {mobileBrowseOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileBrowseOpen(false); }}>
+          <div className="modal contact-browser-modal">
+            <div className="modal-head">
+              <div><Search /><span><strong>Browse contacts</strong><small>Search or filter, then return to the swipe deck.</small></span></div>
+              <button onClick={() => setMobileBrowseOpen(false)}><X /></button>
+            </div>
+            <div className="contact-browser-tools">
+              <div className="search-input">
+                <Search />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Person, company, email, phone, tag…" />
+              </div>
+              <div className="contact-browser-filters">
+                <select value={pipelineFilter} onChange={(event) => setPipelineFilter(event.target.value as Pipeline | "all")}>
+                  <option value="all">All pipelines</option>
+                  {PIPELINES.map((pipeline) => <option key={pipeline} value={pipeline}>{PIPELINE_LABELS[pipeline]}</option>)}
+                </select>
+                <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
+                  <option value="all">All stages</option>
+                  {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="contact-browser-list">
+              {filtered.map((contact) => (
+                <button key={contact.id} onClick={() => { setSelectedId(contact.id); setView(contact.pipeline === "capital" ? "capital" : "contacts"); setMobileBrowseOpen(false); }}>
+                  <span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span>
+                  <span><strong>{contact.name}</strong><small>{contact.organization} · {contactHeadline(contact)}</small></span>
+                  <em className={"stage stage-" + contact.stage}>{STAGE_LABELS[contact.stage]}</em>
+                </button>
+              ))}
+              {!filtered.length ? <EmptyMini icon={<Search />} title="No contacts match" text="Change the search or filters." /> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {voiceOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setVoiceOpen(false); }}>
