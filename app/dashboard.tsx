@@ -91,7 +91,7 @@ import {
 } from "@/lib/relationship-types";
 
 type View = "home" | "contacts" | "capital" | "tasks" | "documents" | "network" | "activity";
-type GeneratedDoc = {
+type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";\n\ntype GeneratedDoc = {
   title: string;
   content: string;
   type: ContactDocument["type"];
