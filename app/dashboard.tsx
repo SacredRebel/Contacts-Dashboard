@@ -1188,7 +1188,7 @@ function ContactDetail({
         <div className="stage-control">
           <span>Relationship stage</span>
           <select value={contact.stage} onChange={(event) => onStage(event.target.value as RelationshipStage)}>
-            {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+            {PIPELINE_STAGES[contact.pipeline].map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
           </select>
         </div>
       </header>
