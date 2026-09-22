@@ -220,3 +220,7 @@ button.primary:hover { background: #2d503c; }
   .ready-draft-list > div { grid-template-columns: 1fr; }
   .ready-draft-list > div > button.secondary { width: 100%; }
 }
+
+.followup-card { border-color: #e4ccb5; }
+.followup-card .page-card-head { background: #fff9f3; }
+.followup-card .page-card-head span, .followup-card .page-card-head strong { color: #8e5a2f; }
