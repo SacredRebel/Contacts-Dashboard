@@ -552,12 +552,27 @@ export function changedSince(contacts: RelationshipContact[], since: string | nu
   return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
 }
 
-async function cloudRequest(_method: "GET" | "POST", _contacts?: RelationshipContact[]): Promise<RelationshipContact[]> {
-  void _method;
-  void _contacts;
-  throw new Error(
-    "Shared cloud sync is not configured yet. Use Export backup / Import backup for cross-device handoff until the shared backend is connected.",
-  );
+async function cloudRequest(method: "GET" | "POST", contacts?: RelationshipContact[]) {
+  const code = teamCode();
+  if (!code) throw new Error("Enter the team access code in Settings first.");
+
+  const response = await fetch("/api/workspace", {
+    method,
+    headers: {
+      "content-type": "application/json",
+      "x-team-code": code,
+    },
+    body: method === "POST" ? JSON.stringify({ contacts }) : undefined,
+  });
+
+  const data = (await response.json()) as {
+    contacts?: RelationshipContact[];
+    updatedAt?: string | null;
+    error?: string;
+  };
+
+  if (!response.ok) throw new Error(data.error || "Cloud sync failed.");
+  return Array.isArray(data.contacts) ? data.contacts : [];
 }
 
 export async function pullCloud() {

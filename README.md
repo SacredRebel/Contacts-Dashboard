@@ -2,93 +2,130 @@
 
 A shared relationship, outreach and capital-qualification workspace for Paul, Mark and Jonathan.
 
-This repository is the implementation of the Notion specification **Unified Relationship & Outreach Platform — Architecture & Implementation Plan** under the project **Outreach Intelligence System — Capital, Architects & Contractors**.
+This repository implements the Notion specification **Unified Relationship & Outreach Platform — Architecture & Implementation Plan** under **Outreach Intelligence System — Capital, Architects & Contractors**.
 
 ## Current platform
 
-The feature branch `build/unified-relationship-platform` contains the new platform foundation:
+Main now includes:
 
-- 216 researched contacts imported from the Notion system:
+- 216 researched contacts imported from Notion:
   - 62 Capital & Deal Network
   - 68 Architects
   - 86 Contractors / Builders
-- Equal team access with permanent color attribution for Paul, Mark and Jonathan
+- Equal core-team access model with permanent Paul / Mark / Jonathan color attribution
 - "What's next?" daily command center
 - Mobile one-contact-at-a-time deck with swipe navigation
+- Mobile contact browser / queue picker
 - Desktop contact list + living relationship dossier
-- Click-to-call, text and email
-- Voice-note capture with browser transcription where available, plus typed transcript fallback
+- Call / text / email shortcuts
+- Voice-note capture with browser transcription where available and typed transcript fallback
 - Chronological relationship timeline
-- Tasks, due dates and handoffs
-- Next Best Action per contact
+- Tasks, assignments, due dates and handoffs
+- Next Best Action
 - Relationship-depth indicator
-- Capital qualification panel:
-  - direct principal vs intermediary / broker / introducer
+- Last-interaction attribution near the top of each contact
+- Important-warning context surfaced prominently
+- Pipeline-specific relationship stages
+- Capital qualification:
+  - direct vs intermediary / broker / introducer
   - decision-maker status
   - entity verification
   - mandate and public size/range
-  - proof/capacity status
+  - capacity / proof status
   - disclosure level
-  - NDA and diligence status
+  - NDA and diligence
   - risk / verification notes
-- Disclosure ladder from public-only to data-room stage
-- Public professional alignment tags for regenerative / impact / wellness / material-fit research
-- Relationship connections and graph view
-- One-click working drafts:
+- Five-step disclosure ladder
+- Regenerative / impact / material-fit professional context
+- Relationship connections + graph
+- Working generators:
   - Handoff Summary
   - Call Brief
+  - Meeting Notes
   - Proposal Working Brief
-  - Pipeline-specific Email Draft
+  - Day 0 Email
+  - Day 3 Follow-up
+  - Day 10 Close-the-loop
+  - Capital Due-Diligence Request
+  - Public Teaser Package
+  - Architect / Contractor Information Pack
+- Explicit sent-email logging
 - Document history with confidentiality labels
 - Workspace activity log
-- Search and filters
+- Search across identity, research notes, interaction summaries/transcripts and saved document content
+- Operational filters:
+  - due today
+  - overdue
+  - assigned to me
+  - high priority
+  - direct capital
+  - intermediary
+  - dormant
 - Full JSON backup / restore
 
-## Storage state
+## Storage and shared sync
 
-The application is currently **local-first**. All relationship updates are persisted in browser storage and can be exported/imported as a complete JSON backup.
+The app remains fully usable local-first. Relationship data persists in browser storage and can be exported/imported as a complete JSON backup.
 
-The UI already contains a Shared Cloud settings section, but shared cloud sync is intentionally marked **not configured** until a real team backend is connected. Do not treat local browser storage as multi-user synchronization.
+The repository also includes a **server-side shared-sync bridge** that activates when a Supabase project and deployment variables are configured.
 
-A production shared backend should provide:
+### Shared-sync setup
 
-- authentication / team access
-- shared contacts
-- interactions
-- tasks
-- documents metadata + private file storage
-- capital qualification
-- connections
-- audit history
-- realtime or near-realtime updates
+1. Create / choose a Supabase project.
+2. Run `docs/shared-sync-snapshot.sql`.
+3. In the deployment environment set:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `TEAM_ACCESS_CODE`
+4. Redeploy.
+5. In Relationship OS → **Settings & sync**, enter the same team access code.
+6. Push the current local workspace once to seed the shared snapshot.
+7. Other team devices can then pull the same shared workspace.
 
-Supabase/Postgres is a suitable implementation path, but credentials and production access controls must be configured outside GitHub before enabling it.
+The browser never receives the Supabase service-role key. It stays server-side in `app/api/workspace/route.ts`.
+
+The snapshot bridge is intentionally simple and useful for initial three-person shared operation. The normalized long-term Postgres model remains documented in `docs/shared-backend-schema.sql`.
+
+## Email state
+
+Relationship OS currently:
+
+- creates pipeline-specific email drafts;
+- opens the user’s mail client;
+- lets the team explicitly log an email as sent;
+- preserves that action in the relationship timeline.
+
+A real mailbox connection is still required for thread IDs, verified sent state, reply ingestion, inbox monitoring and same-thread follow-up automation. External sending remains human-controlled until that connection is configured.
 
 ## Voice
 
-V1 uses the browser's speech-recognition capability when supported. No paid reasoning-model API is required for the core workflow.
+V1 uses browser speech recognition when supported and does not require a paid reasoning-model API.
 
-The app remains useful without AI:
+Core workflow:
 
-1. record / dictate or type a relationship note
-2. save it to the contact timeline
-3. create the next task
-4. hand it to the right teammate
-5. preserve the complete relationship history
+1. record / dictate or type a relationship update;
+2. save it to the contact timeline;
+3. create the next task;
+4. hand it to the right teammate;
+5. execute and mark complete.
 
-A later AI layer can turn transcripts into suggested structured updates, tasks, dates, capital qualification changes and draft replies. Important changes should remain human-reviewed.
+A later AI layer can turn transcripts into reviewable suggestions for structured updates, tasks, dates, capital qualification and reply drafts.
 
 ## Deployment
 
-To preview this duplicated repository in Vercel:
+This repository is not currently attached to a Vercel project.
 
-1. In Vercel choose **Add New → Project**
+To deploy:
+
+1. Vercel → **Add New → Project**
 2. Import **SacredRebel/Contacts-Dashboard**
 3. Framework: **Next.js**
 4. Root directory: `./`
-5. Deploy
+5. Add the shared-sync environment variables if Supabase is ready.
+6. Use Vercel protection or application authentication before real sensitive relationship data is used.
+7. Deploy.
 
-The production metadata sets `robots.index=false`, but the deployment should still use Vercel protection or application authentication before sensitive relationship data is used.
+The app metadata sets `robots.index=false`.
 
 ## Development
 
@@ -104,21 +141,22 @@ pnpm lint
 pnpm build
 ```
 
-## Source files
+## Source map
 
 - `data/relationship-contacts.json` — 216-contact Notion migration seed
-- `lib/relationship-types.ts` — shared domain model
-- `lib/relationship-store.ts` — local persistence, timeline/task/document helpers and generators
+- `lib/relationship-types.ts` — domain model
+- `lib/relationship-store.ts` — local persistence, relationship helpers, generators and shared-sync client
+- `app/api/workspace/route.ts` — server-only shared-sync API
 - `app/dashboard.tsx` — unified operating interface
 - `app/styles/relationship-*.css` — desktop/mobile UI
-- `docs/platform-implementation.md` — architecture and rollout notes
+- `docs/platform-implementation.md` — architecture / rollout map
+- `docs/shared-sync-snapshot.sql` — initial shared-sync bridge
+- `docs/shared-backend-schema.sql` — normalized long-term backend schema
 
 ## Operating principle
 
 A beautiful CRM that slows the team down after a call is a failed design.
 
-The successful workflow is:
-
 **Call → quick voice/text note → relationship timeline → exact next action → teammate executes → mark complete.**
 
-Sensitive capital information follows the disclosure gate and human verification process; a reply alone never makes a capital contact qualified.
+For capital, a responsive person is not automatically qualified capital. Disclosure and verification remain explicit, reviewable human decisions.
