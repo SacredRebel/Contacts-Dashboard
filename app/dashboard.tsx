@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
-  AlertTriangle,
   ArrowUpRight,
   BriefcaseBusiness,
   Building2,
@@ -51,7 +50,6 @@ import { Toaster } from "@/components/ui/sonner";
 import {
   activeUser,
   changedSince,
-  contactHeadline,
   draftEmail,
   exportWorkspace,
   generateCallBrief,
@@ -1436,7 +1434,7 @@ function ActivityView({
   );
 }
 
-function PageHero({ icon, eyebrow, title, text }: { icon: React.ReactNode; eyebrow: string; title: string; text: string }) {
+function PageHero({ icon, eyebrow, title, text }: { icon: ReactNode; eyebrow: string; title: string; text: string }) {
   return (
     <header className="page-hero">
       <div className="page-hero-icon">{icon}</div>
@@ -1454,7 +1452,7 @@ function Info({
 }: {
   label: string;
   value: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   href?: string;
   external?: boolean;
 }) {
@@ -1466,7 +1464,7 @@ function Info({
   );
 }
 
-function EmptyMini({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function EmptyMini({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return <div className="empty-mini">{icon}<strong>{title}</strong><span>{text}</span></div>;
 }
 
