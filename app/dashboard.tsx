@@ -1393,7 +1393,7 @@ function HomeView({
             ] as [Pipeline, number, number][]).map(([pipeline, count, total]) => (
               <div key={pipeline}>
                 <span><strong>{PIPELINE_LABELS[pipeline]}</strong><em>{count}</em></span>
-                <i><b className={pipeline} style={{ width: Math.max(2, (count / total) * 100) + "%" }} /></i>
+                <i><b className={pipeline} style={{ width: (total > 0 ? Math.max(2, (count / total) * 100) : 0) + "%" }} /></i>
               </div>
             ))}
           </div>
