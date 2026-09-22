@@ -396,7 +396,7 @@ export function changedSince(contacts: RelationshipContact[], since: string | nu
   return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
 }
 
-async function cloudRequest(_method: "GET" | "POST", _contacts?: RelationshipContact[]) {
+async function cloudRequest(_method: "GET" | "POST", _contacts?: RelationshipContact[]): Promise<RelationshipContact[]> {
   void _method;
   void _contacts;
   throw new Error(
