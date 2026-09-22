@@ -285,24 +285,41 @@ export function Dashboard() {
           ? contact.pipeline === "capital"
           : pipelineFilter === "all" || contact.pipeline === pipelineFilter;
         const stageMatch = stageFilter === "all" || contact.stage === stageFilter;
+        const open = contact.tasks.filter((task) => !["done", "canceled"].includes(task.status));
+        const queueMatch =
+          queueFilter === "all" ||
+          (queueFilter === "due_today" && (isToday(contact.nextActionDue) || open.some((task) => isToday(task.dueAt)))) ||
+          (queueFilter === "overdue" && (isOverdue(contact.nextActionDue) || open.some((task) => isOverdue(task.dueAt)))) ||
+          (queueFilter === "assigned_to_me" && open.some((task) => task.assignedTo === member)) ||
+          (queueFilter === "high_priority" && contact.priority === "A") ||
+          (queueFilter === "direct_capital" && contact.pipeline === "capital" && /direct|managed|authorized/i.test(contact.capital?.directness || "")) ||
+          (queueFilter === "intermediary" && contact.pipeline === "capital" && /broker|introducer|representative|network/i.test(contact.capital?.directness || "")) ||
+          (queueFilter === "dormant" && relationshipDepth(contact).label === "Dormant");
         const haystack = [
           contact.name,
           contact.organization,
           contact.title,
           contact.email,
           contact.phone,
+          contact.website,
+          contact.linkedin,
           contact.category,
           contact.professionalThemes,
           contact.publicObservation,
+          contact.outreachHook,
+          contact.materialFit,
+          contact.warnings,
           contact.alignmentTags.join(" "),
+          ...contact.interactions.flatMap((item) => [item.summary, item.transcript || ""]),
+          ...contact.documents.flatMap((document) => [document.title, document.content || ""]),
         ].join(" ").toLowerCase();
-        return pipelineMatch && stageMatch && (!needle || haystack.includes(needle));
+        return pipelineMatch && stageMatch && queueMatch && (!needle || haystack.includes(needle));
       })
       .sort((a, b) => {
         const priority = { A: 3, B: 2, C: 1 } as Record<string, number>;
         return (priority[b.priority] || 0) - (priority[a.priority] || 0) || b.score - a.score;
       });
-  }, [contacts, pipelineFilter, query, stageFilter, view]);
+  }, [contacts, member, pipelineFilter, query, queueFilter, stageFilter, view]);
 
   useEffect(() => {
     if (view !== "contacts" && view !== "capital") return;
