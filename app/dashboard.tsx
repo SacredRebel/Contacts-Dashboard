@@ -799,7 +799,7 @@ export function Dashboard() {
                     ) : null}
                     <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as RelationshipStage | "all")}>
                       <option value="all">All stages</option>
-                      {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+                      {PIPELINE_STAGES[contact.pipeline].map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
                     </select>
                   </div>
                   <div className="list-summary"><strong>{filtered.length}</strong> contacts</div>
@@ -1106,7 +1106,7 @@ function ContactDetail({
   onTask: () => void;
   onDocument: () => void;
   onConnection: () => void;
-  onGenerate: (kind: "handoff" | "call" | "proposal" | "email") => void;
+  onGenerate: (kind: GeneratedKind) => void;
   onLog: (type: Interaction["type"], summary: string, transcript?: string) => void;
 }) {
   const depth = relationshipDepth(contact);
@@ -1157,7 +1157,7 @@ function ContactDetail({
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
         <button onClick={onVoice}><Mic /><span>Voice note</span></button>
-        <button onClick={() => onGenerate("email")}><Sparkles /><span>Draft email</span></button>
+        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft email</span></button>
         <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
       </div>
 
@@ -1254,7 +1254,7 @@ function ContactDetail({
             <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>Who they are, history, risks, next step</small></span></button>
             <button onClick={() => onGenerate("call")}><Phone /><span><strong>Call brief</strong><small>Context and unresolved questions</small></span></button>
             <button onClick={() => onGenerate("proposal")}><FilePlus2 /><span><strong>Create proposal</strong><small>Build a working brief from this file</small></span></button>
-            <button onClick={() => onGenerate("email")}><Mail /><span><strong>Draft email</strong><small>Pipeline-specific message from context</small></span></button>
+            <button onClick={() => onGenerate("email0")}><Mail /><span><strong>Draft email</strong><small>Pipeline-specific message from context</small></span></button>
           </div>
           <div className="document-list">
             {contact.documents.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8).map((document) => (
