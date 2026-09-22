@@ -165,3 +165,40 @@ button.primary:hover { background: #2d503c; }
   .page-filterbar.compact > svg { display: none; }
   .page-filterbar > span { padding: 2px 3px; }
 }
+
+
+/* Outreach send queue */
+.outreach-grid { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(300px,.75fr); gap: 12px; }
+.outreach-card { overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: 0 6px 18px rgba(24,41,31,.025); }
+.outreach-list { max-height: calc(100vh - 260px); overflow-y: auto; }
+.outreach-row { padding: 14px; border-bottom: 1px solid #edf0ed; }
+.outreach-contact { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 9px; align-items: center; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
+.outreach-contact strong, .outreach-contact small { display: block; }
+.outreach-contact strong { font-size: 10px; color: #435047; }
+.outreach-contact small { margin-top: 2px; overflow: hidden; color: #89948d; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.outreach-row > p { margin: 10px 0; padding: 9px 10px; border-left: 2px solid #cbd8cf; background: #f8faf8; color: #59665e; font-size: 9px; line-height: 1.55; }
+.outreach-row > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.outreach-row > div > span:first-child { color: #929b96; font-size: 7px; }
+.outreach-actions { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.outreach-actions button { display: inline-flex; align-items: center; gap: 4px; min-height: 31px; padding: 0 8px; border-radius: 8px; font-size: 7px; font-weight: 850; }
+.outreach-actions button svg { width: 11px; }
+.sent-card { align-self: start; }
+.sent-list { max-height: calc(100vh - 260px); overflow-y: auto; }
+.sent-list > button { display: grid; grid-template-columns: 32px minmax(0,1fr) 14px; gap: 8px; align-items: center; width: 100%; min-height: 58px; padding: 10px 13px; border: 0; border-bottom: 1px solid #edf0ed; background: #fff; text-align: left; }
+.sent-list > button:hover { background: #fafcfa; }
+.sent-list strong, .sent-list small { display: block; }
+.sent-list strong { font-size: 9px; color: #46544b; }
+.sent-list small { margin-top: 2px; overflow: hidden; color: #8a958e; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.sent-list > button > svg { width: 12px; color: #a1aaa4; }
+
+@media (max-width: 900px) {
+  .outreach-grid { grid-template-columns: 1fr; }
+  .outreach-list, .sent-list { max-height: none; }
+}
+
+@media (max-width: 560px) {
+  .outreach-row { padding: 11px; }
+  .outreach-row > div { display: grid; }
+  .outreach-actions { justify-content: stretch; }
+  .outreach-actions button { flex: 1; justify-content: center; }
+}
