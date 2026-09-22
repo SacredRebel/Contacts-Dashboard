@@ -50,6 +50,7 @@ import { Toaster } from "@/components/ui/sonner";
 import {
   activeUser,
   changedSince,
+  contactHeadline,
   draftEmail,
   exportWorkspace,
   generateCallBrief,
