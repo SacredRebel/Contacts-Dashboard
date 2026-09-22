@@ -91,16 +91,24 @@ The capital panel includes:
 
 This is designed around the rule that a responsive person is not automatically qualified capital.
 
-### Document actions
+### Document and outreach actions
 
 Current local generators:
 
 - Handoff Summary
 - Call Brief
+- Meeting Notes
 - Proposal Working Brief
-- Pipeline-specific email draft
+- Day 0 Email
+- Day 3 Follow-up
+- Day 10 Close-the-loop
+- Capital Due-Diligence Request
+- Public Teaser Package
+- Architect / Contractor Information Pack
 
 Drafts are editable before use and can be saved back to the contact record.
+
+Saved email drafts appear in the **Outreach** send queue. The team can open the reviewed draft in their mail client and explicitly mark it sent so the contact timeline and relationship stage update without pretending the dashboard sent it automatically.
 
 ### Relationship network
 
@@ -117,27 +125,15 @@ Initial relationship types include:
 - architect for
 - contractor for
 
-### Local persistence
+### Local persistence and portability
 
 Browser storage is the current running persistence layer.
 
-Full workspace export/import includes structured relationship data, not merely contact rows.
+Full workspace JSON export/import includes structured relationship data, not merely contact rows. CSV export is available for spreadsheet review, cleanup and handoff.
 
-## External services still required for true production multi-user operation
+**Shared database work is intentionally deferred.** The present build prioritizes the daily operating workflow before infrastructure.
 
-These capabilities cannot be made genuinely shared merely by adding UI code. They require a configured external service or authenticated account.
-
-### Shared database + file storage
-
-The repository includes a proposed SQL schema in `docs/shared-backend-schema.sql`.
-
-When a shared backend is connected:
-
-- replace local-only persistence with authenticated shared persistence
-- migrate current local snapshots into shared tables
-- add private file object storage
-- add realtime updates
-- preserve a local export/backup option
+## External services that can be added later
 
 ### Email provider connection
 
@@ -167,15 +163,14 @@ Later model-backed features can suggest:
 
 Important record changes remain reviewable.
 
-## Recommended shared-backend rollout
+## Current rollout priority
 
-1. Deploy and review the feature branch as a protected preview.
-2. Validate mobile contact deck with Mark.
-3. Validate Jonathan task/handoff workflow.
-4. Validate Paul quick-add/research workflow.
-5. Create a shared database project.
-6. Apply `docs/shared-backend-schema.sql`.
-7. Add authentication for the three team members.
-8. Migrate the 216-contact seed and any new local activity.
-9. Add private document storage.
-10. Connect email only after team workflow is stable.
+1. Deploy the repository as a protected preview.
+2. Test the mobile swipe/contact workflow with Mark.
+3. Test Jonathan’s task → draft → send → mark-done workflow.
+4. Test Paul’s quick-add / research / Day 0 outreach workflow.
+5. Use the Outreach queue for real reviewed emails.
+6. Use JSON backups routinely while the system remains local-first.
+7. Use CSV exports for cleanup, review and external spreadsheet work.
+8. Connect a mailbox only when the team wants verified thread-level sending and reply ingestion.
+9. Revisit a shared backend later only if the three-person workflow proves it is worth the infrastructure.
