@@ -1,0 +1,654 @@
+/* Relationship OS — polished light + dark visual system
+   Loaded last so it intentionally normalizes the older prototype styles. */
+
+.relationship-app {
+  --bg: #f6f8fb;
+  --surface: rgba(255,255,255,.92);
+  --surface-solid: #ffffff;
+  --surface-soft: #f8fafb;
+  --surface-muted: #f1f5f3;
+  --surface-raised: #ffffff;
+  --text: #17201a;
+  --text-2: #526158;
+  --text-3: #87928b;
+  --border: #e3e9e5;
+  --border-strong: #d3ddd6;
+  --accent: #2f6d50;
+  --accent-strong: #22533d;
+  --accent-soft: #eaf5ee;
+  --lime: #dff16f;
+  --sidebar-bg: rgba(255,255,255,.96);
+  --sidebar-text: #56635b;
+  --sidebar-active: #edf5ef;
+  --sidebar-border: #e1e8e3;
+  --shadow-sm: 0 5px 18px rgba(22,36,28,.045);
+  --shadow-md: 0 16px 40px rgba(22,36,28,.075);
+  --shadow-lg: 0 28px 80px rgba(22,36,28,.11);
+  --hero-a: #1f3c2d;
+  --hero-b: #315e47;
+  --hero-text: #ffffff;
+  --input-bg: #ffffff;
+  --overlay: rgba(17,25,20,.46);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 78% -8%, rgba(105,152,122,.13), transparent 34rem),
+    radial-gradient(circle at 12% 10%, rgba(205,221,210,.2), transparent 28rem),
+    var(--bg);
+}
+
+.relationship-app[data-theme="dark"] {
+  --bg: #0d1210;
+  --surface: rgba(20,27,23,.94);
+  --surface-solid: #151c18;
+  --surface-soft: #111713;
+  --surface-muted: #1a241e;
+  --surface-raised: #1c2620;
+  --text: #eff5f1;
+  --text-2: #b1beb6;
+  --text-3: #7f9085;
+  --border: #27322c;
+  --border-strong: #334039;
+  --accent: #83b993;
+  --accent-strong: #a9d1b4;
+  --accent-soft: #1b3324;
+  --lime: #dff16f;
+  --sidebar-bg: #101613;
+  --sidebar-text: #9eaca3;
+  --sidebar-active: #1b2b21;
+  --sidebar-border: #26312b;
+  --shadow-sm: 0 6px 18px rgba(0,0,0,.18);
+  --shadow-md: 0 18px 46px rgba(0,0,0,.28);
+  --shadow-lg: 0 32px 90px rgba(0,0,0,.38);
+  --hero-a: #15261c;
+  --hero-b: #244a35;
+  --hero-text: #ffffff;
+  --input-bg: #101713;
+  --overlay: rgba(0,0,0,.66);
+  background:
+    radial-gradient(circle at 82% -6%, rgba(75,130,92,.15), transparent 35rem),
+    radial-gradient(circle at 10% 5%, rgba(105,127,113,.08), transparent 28rem),
+    var(--bg);
+}
+
+/* Shell */
+.relationship-app .sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right-color: var(--sidebar-border);
+  box-shadow: 8px 0 36px rgba(29,46,35,.035);
+  backdrop-filter: blur(22px);
+}
+.relationship-app .brand-mark {
+  background: linear-gradient(145deg,#dff16f,#cbe85d);
+  color: #1b291f;
+  box-shadow: 0 7px 18px rgba(111,141,61,.14);
+}
+.relationship-app .brand strong { color: var(--text); }
+.relationship-app .brand span { color: var(--text-3); }
+
+.relationship-app .main-nav button,
+.relationship-app .settings-button {
+  color: var(--sidebar-text);
+}
+.relationship-app .main-nav button:hover,
+.relationship-app .settings-button:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.relationship-app .main-nav button.active {
+  background: var(--sidebar-active);
+  color: var(--accent-strong);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.relationship-app .main-nav button.active svg { color: var(--accent); }
+.relationship-app .main-nav button.active::after { background: var(--accent); }
+.relationship-app .sidebar-team { border-top-color: var(--sidebar-border); }
+.relationship-app .sidebar-team > span { color: var(--text-3); }
+.relationship-app .sidebar-team button { color: var(--sidebar-text); }
+.relationship-app .sidebar-team button:hover { background: var(--surface-muted); color: var(--text); }
+.relationship-app .sidebar-team button.active {
+  background: var(--sidebar-active);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.relationship-app .settings-button { border-top-color: var(--sidebar-border); }
+
+.relationship-app .app-main { background: transparent; }
+.relationship-app .topbar {
+  background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+  border-bottom-color: var(--border);
+  box-shadow: 0 1px 0 rgba(255,255,255,.45);
+}
+.relationship-app[data-theme="dark"] .topbar { box-shadow: 0 1px 0 rgba(255,255,255,.02); }
+.relationship-app .top-title span { color: var(--text-3); }
+.relationship-app .top-title strong { color: var(--text); }
+
+.relationship-app .icon-action,
+.relationship-app .menu-button {
+  background: var(--surface-solid);
+  color: var(--text-2);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.relationship-app .icon-action:hover,
+.relationship-app .menu-button:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.relationship-app .theme-toggle {
+  position: relative;
+  overflow: hidden;
+}
+.relationship-app .primary-action {
+  background: linear-gradient(145deg,var(--accent-strong),#2f684e);
+  border-color: transparent;
+  box-shadow: 0 10px 26px rgba(39,88,63,.18);
+}
+
+/* Dashboard */
+.relationship-app .hero-card {
+  border: 0;
+  background:
+    radial-gradient(circle at 86% 12%, rgba(223,241,111,.17), transparent 24rem),
+    linear-gradient(130deg,var(--hero-a),var(--hero-b));
+  color: var(--hero-text);
+  box-shadow: 0 22px 60px rgba(35,67,49,.16);
+}
+.relationship-app .hero-card p { color: rgba(255,255,255,.72); }
+.relationship-app .hero-card > div:first-child > span { color: #e0f477; }
+.relationship-app .hero-number {
+  border-color: rgba(255,255,255,.15);
+  background: rgba(255,255,255,.075);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.relationship-app .hero-number strong { color: #e0f477; }
+.relationship-app .hero-number span { color: rgba(255,255,255,.65); }
+
+.relationship-app .metric-grid button,
+.relationship-app .home-card,
+.relationship-app .page-hero,
+.relationship-app .task-board > section,
+.relationship-app .table-card,
+.relationship-app .network-map,
+.relationship-app .network-edges,
+.relationship-app .activity-page-list,
+.relationship-app .outreach-card {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+}
+.relationship-app .metric-grid button:hover,
+.relationship-app .home-card:hover {
+  border-color: var(--border-strong);
+}
+.relationship-app .metric-grid button > svg {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.relationship-app .metric-grid button span,
+.relationship-app .metric-grid button strong { color: var(--text); }
+.relationship-app .metric-grid button span { color: var(--text-2); }
+.relationship-app .metric-grid button.attention {
+  background: color-mix(in srgb, #fff5ea 70%, var(--surface-solid));
+  border-color: #ecd3b8;
+}
+.relationship-app[data-theme="dark"] .metric-grid button.attention {
+  background: #261d15;
+  border-color: #4b3828;
+}
+.relationship-app .card-head,
+.relationship-app .page-card-head {
+  border-bottom-color: var(--border);
+  background: transparent;
+}
+.relationship-app .card-head strong,
+.relationship-app .page-card-head strong { color: var(--text); }
+.relationship-app .card-head small,
+.relationship-app .page-card-head span { color: var(--text-3); }
+.relationship-app .card-head > div > svg { color: var(--accent); }
+.relationship-app .card-head > button { color: var(--accent); }
+
+.relationship-app .action-item,
+.relationship-app .change-list button,
+.relationship-app .capital-list button,
+.relationship-app .task-row,
+.relationship-app .table-header,
+.relationship-app .table-row,
+.relationship-app .network-edges > button,
+.relationship-app .activity-page-list > button,
+.relationship-app .sent-list > button,
+.relationship-app .ready-draft-list > div {
+  border-bottom-color: var(--border);
+}
+.relationship-app .change-list button,
+.relationship-app .capital-list button,
+.relationship-app .table-row,
+.relationship-app .network-edges > button,
+.relationship-app .activity-page-list > button,
+.relationship-app .sent-list > button {
+  background: transparent;
+  color: var(--text);
+}
+.relationship-app .change-list button:hover,
+.relationship-app .capital-list button:hover,
+.relationship-app .table-row:hover,
+.relationship-app .network-edges > button:hover,
+.relationship-app .activity-page-list > button:hover,
+.relationship-app .sent-list > button:hover {
+  background: var(--surface-muted);
+}
+.relationship-app .action-copy strong,
+.relationship-app .change-list strong,
+.relationship-app .capital-list strong { color: var(--text); }
+.relationship-app .action-copy small,
+.relationship-app .change-list small,
+.relationship-app .capital-list small { color: var(--text-3); }
+.relationship-app .complete-circle {
+  background: var(--surface-solid);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+.relationship-app .pipeline-card > p { color: var(--text-3); }
+.relationship-app .pipeline-bars i { background: var(--surface-muted); }
+
+/* Page heroes + filters */
+.relationship-app .page-hero-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.relationship-app .page-hero span,
+.relationship-app .page-hero p { color: var(--text-3); }
+.relationship-app .page-hero h1 { color: var(--text); }
+.relationship-app .page-filterbar {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.relationship-app .page-filterbar > span,
+.relationship-app .page-filterbar.compact > svg { color: var(--text-3); }
+.relationship-app .page-filterbar > span strong { color: var(--text); }
+
+/* Inputs */
+.relationship-app input,
+.relationship-app textarea,
+.relationship-app select,
+.relationship-app .document-editor {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.relationship-app input::placeholder,
+.relationship-app textarea::placeholder { color: var(--text-3); }
+.relationship-app input:focus,
+.relationship-app textarea:focus,
+.relationship-app select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent);
+}
+
+/* Contact workspace */
+.relationship-app .contacts-workspace {
+  background: var(--surface-solid);
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+}
+.relationship-app .contacts-list-panel,
+.relationship-app .list-toolbar {
+  background: var(--surface-solid);
+  border-color: var(--border);
+}
+.relationship-app .list-summary { color: var(--text-3); }
+.relationship-app .list-summary strong { color: var(--text-2); }
+.relationship-app .contact-row {
+  border-bottom-color: var(--border);
+  color: var(--text);
+}
+.relationship-app .contact-row:hover { background: var(--surface-muted); }
+.relationship-app .contact-row.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.relationship-app .row-heading strong { color: var(--text); }
+.relationship-app .row-copy > span:nth-child(2) { color: var(--text-2); }
+.relationship-app .row-copy small { color: var(--text-3); }
+
+.relationship-app .contact-detail-panel { background: var(--surface-soft); }
+.relationship-app .contact-hero {
+  background: var(--surface-solid);
+  border-bottom-color: var(--border);
+}
+.relationship-app .contact-title h1 { color: var(--text); }
+.relationship-app .contact-title > p { color: var(--text-2); }
+.relationship-app .contact-title > small { color: var(--text-3); }
+.relationship-app .quick-actions {
+  background: var(--surface-solid);
+  border-bottom-color: var(--border);
+}
+.relationship-app .quick-actions a,
+.relationship-app .quick-actions button {
+  background: var(--surface-solid);
+  color: var(--text-2);
+  border-color: var(--border);
+}
+.relationship-app .quick-actions a:hover,
+.relationship-app .quick-actions button:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.relationship-app .quick-actions .complete-action {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb,var(--accent) 30%,var(--border));
+}
+
+.relationship-app .detail-body > section {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.relationship-app .section-head strong { color: var(--text); }
+.relationship-app .section-head small { color: var(--text-3); }
+.relationship-app .section-head > div > svg { color: var(--accent); }
+.relationship-app .section-head > button,
+.relationship-app .section-head > a {
+  background: var(--surface-solid);
+  color: var(--text-2);
+  border-color: var(--border);
+}
+.relationship-app .next-action-card {
+  background: linear-gradient(145deg,color-mix(in srgb,var(--accent-soft) 55%,var(--surface-solid)),var(--surface-solid)) !important;
+  border-color: color-mix(in srgb,var(--accent) 24%,var(--border)) !important;
+}
+.relationship-app .info-item,
+.relationship-app .context-card,
+.relationship-app .context-grid > div,
+.relationship-app .connection-list button,
+.relationship-app .document-actions-grid button {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+.relationship-app .info-item > span,
+.relationship-app .document-actions-grid > button > svg {
+  background: var(--surface-muted);
+  color: var(--accent);
+}
+.relationship-app .info-item label,
+.relationship-app .context-card label,
+.relationship-app .context-grid label { color: var(--text-3); }
+.relationship-app .info-item strong,
+.relationship-app .info-item a,
+.relationship-app .context-card p,
+.relationship-app .context-grid p { color: var(--text-2); }
+.relationship-app .info-item a { color: var(--accent); }
+.relationship-app .tag-row span {
+  background: var(--surface-muted);
+  color: var(--text-2);
+  border-color: var(--border);
+}
+.relationship-app .capital-panel {
+  background: linear-gradient(145deg,color-mix(in srgb,var(--accent-soft) 35%,var(--surface-solid)),var(--surface-solid)) !important;
+  border-color: color-mix(in srgb,var(--accent) 22%,var(--border)) !important;
+}
+.relationship-app .capital-panel .section-head > em {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.relationship-app .disclosure-ladder span {
+  background: var(--surface-soft);
+  color: var(--text-3);
+  border-color: var(--border);
+}
+.relationship-app .disclosure-ladder span.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb,var(--accent) 30%,var(--border));
+}
+.relationship-app .timeline-item:not(:last-child)::after { background: var(--border); }
+.relationship-app .timeline-icon { background: var(--surface-muted); color: var(--text-2); }
+.relationship-app .timeline-copy > p { color: var(--text-2); }
+.relationship-app .timeline-copy > span small { color: var(--text-3); }
+.relationship-app .timeline-copy details p {
+  background: var(--surface-soft);
+  color: var(--text-2);
+  border-left-color: var(--border-strong);
+}
+.relationship-app .source-links a {
+  background: var(--surface-muted);
+  color: var(--accent);
+}
+
+/* Outreach */
+.relationship-app .outreach-card { background: var(--surface); }
+.relationship-app .outreach-row { border-bottom-color: var(--border); }
+.relationship-app .outreach-row > p {
+  background: var(--surface-soft);
+  color: var(--text-2);
+  border-left-color: var(--border-strong);
+}
+.relationship-app .outreach-contact strong,
+.relationship-app .sent-list strong,
+.relationship-app .ready-draft-list strong { color: var(--text); }
+.relationship-app .outreach-contact small,
+.relationship-app .sent-list small,
+.relationship-app .ready-draft-list small { color: var(--text-3); }
+.relationship-app .outreach-row.approved {
+  background: linear-gradient(90deg,color-mix(in srgb,var(--accent-soft) 62%,transparent),transparent 52%);
+}
+.relationship-app .approve-draft {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb,var(--accent) 28%,var(--border)) !important;
+}
+.relationship-app .followup-card { border-color: color-mix(in srgb,#d58a43 30%,var(--border)); }
+.relationship-app .followup-card .page-card-head {
+  background: color-mix(in srgb,#fff5e8 55%,var(--surface-solid));
+}
+.relationship-app[data-theme="dark"] .followup-card .page-card-head { background: #241c15; }
+
+/* Tasks/tables */
+.relationship-app .task-row.due { background: color-mix(in srgb,#fff5e8 42%,var(--surface-solid)); }
+.relationship-app[data-theme="dark"] .task-row.due { background: #211a14; }
+.relationship-app .table-header {
+  background: var(--surface-soft);
+  color: var(--text-3);
+}
+.relationship-app .table-row { background: transparent; color: var(--text-2); }
+.relationship-app .table-row b { color: var(--text); }
+.relationship-app .table-row small { color: var(--text-3); }
+
+/* Network */
+.relationship-app .network-map {
+  background:
+    radial-gradient(circle at center,color-mix(in srgb,var(--accent-soft) 30%,var(--surface-solid)),var(--surface-solid));
+}
+.relationship-app .network-center {
+  background: linear-gradient(145deg,var(--accent-strong),#183327);
+  border-color: color-mix(in srgb,var(--accent) 28%,var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+/* Modals */
+.relationship-app .modal-backdrop {
+  background: var(--overlay);
+}
+.relationship-app .modal {
+  background: var(--surface-solid);
+  border-color: var(--border);
+  box-shadow: var(--shadow-lg);
+}
+.relationship-app .modal-head {
+  border-bottom-color: var(--border);
+}
+.relationship-app .modal-head strong { color: var(--text); }
+.relationship-app .modal-head small { color: var(--text-3); }
+.relationship-app .modal-head > button {
+  background: var(--surface-muted);
+  color: var(--text-2);
+}
+.relationship-app .modal-actions {
+  background: var(--surface-soft);
+  border-top-color: var(--border);
+}
+.relationship-app button.secondary {
+  background: var(--surface-solid);
+  color: var(--text-2);
+  border-color: var(--border-strong);
+}
+.relationship-app button.secondary:hover { background: var(--surface-muted); }
+.relationship-app button.primary {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.relationship-app .settings-section { border-bottom-color: var(--border); }
+.relationship-app .settings-section h3 { color: var(--text); }
+.relationship-app .settings-section > p { color: var(--text-3); }
+.relationship-app .member-cards button {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+.relationship-app .member-cards button.active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb,var(--accent) 26%,var(--border));
+}
+.relationship-app .member-cards strong { color: var(--text); }
+.relationship-app .member-cards small { color: var(--text-3); }
+
+/* Small visual refinements */
+.relationship-app .stage {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.025);
+}
+.relationship-app[data-theme="dark"] .stage {
+  filter: saturate(.78) brightness(.9);
+}
+.relationship-app .avatar-small,
+.relationship-app .pipeline-avatar,
+.relationship-app .contact-avatar {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.035);
+}
+.relationship-app .empty-mini,
+.relationship-app .empty-list,
+.relationship-app .empty-detail {
+  color: var(--text-3);
+}
+.relationship-app .empty-mini strong,
+.relationship-app .empty-list strong,
+.relationship-app .empty-detail strong { color: var(--text-2); }
+
+/* Mobile should feel like a designed app, not collapsed desktop. */
+@media (max-width: 740px) {
+  .relationship-app {
+    min-height: 100dvh;
+  }
+  .relationship-app .topbar {
+    position: sticky;
+    top: 0;
+    min-height: 58px;
+    padding: 8px 9px;
+    box-shadow: 0 8px 24px rgba(26,42,31,.055);
+  }
+  .relationship-app .main-content {
+    padding: 8px;
+  }
+  .relationship-app .hero-card {
+    padding: 20px 18px 17px;
+    border-radius: 20px;
+    box-shadow: 0 17px 44px rgba(28,59,42,.15);
+  }
+  .relationship-app .hero-card h1 {
+    font-size: clamp(28px,9vw,35px);
+    line-height: .98;
+  }
+  .relationship-app .metric-grid {
+    gap: 7px;
+    scroll-snap-type: x proximity;
+  }
+  .relationship-app .metric-grid button {
+    min-width: 120px;
+    border-radius: 15px;
+    scroll-snap-align: start;
+  }
+  .relationship-app .home-card,
+  .relationship-app .page-hero,
+  .relationship-app .contact-detail-panel,
+  .relationship-app .outreach-card,
+  .relationship-app .task-board > section,
+  .relationship-app .table-card {
+    border-radius: 17px;
+  }
+  .relationship-app .page-hero {
+    align-items: flex-start;
+  }
+  .relationship-app .contacts-workspace {
+    background: transparent;
+  }
+  .relationship-app .contact-detail-panel {
+    overflow: hidden;
+    border-color: var(--border);
+    box-shadow: var(--shadow-md);
+  }
+  .relationship-app .mobile-deck-nav {
+    background: var(--surface-solid);
+    border-bottom-color: var(--border);
+  }
+  .relationship-app .mobile-deck-nav button {
+    background: var(--surface-muted);
+    color: var(--text-2);
+    border-color: var(--border);
+  }
+  .relationship-app .contact-hero {
+    padding: 15px 13px 13px;
+  }
+  .relationship-app .quick-actions {
+    gap: 6px;
+    padding: 7px;
+    scroll-snap-type: x proximity;
+  }
+  .relationship-app .quick-actions a,
+  .relationship-app .quick-actions button {
+    min-width: 64px;
+    min-height: 52px;
+    border-radius: 12px;
+    scroll-snap-align: start;
+  }
+  .relationship-app .detail-body {
+    gap: 8px;
+    padding: 8px;
+  }
+  .relationship-app .detail-body > section {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .relationship-app .modal-backdrop {
+    padding: 8px;
+    align-items: end;
+  }
+  .relationship-app .modal {
+    width: 100%;
+    max-height: 91dvh;
+    border-radius: 22px 22px 14px 14px;
+  }
+  .relationship-app .contact-browser-modal {
+    max-height: 93dvh;
+  }
+}
+
+/* Dark mode fixes for hardcoded legacy surfaces */
+.relationship-app[data-theme="dark"] .contact-browser-tools,
+.relationship-app[data-theme="dark"] .list-toolbar {
+  background: var(--surface-solid);
+}
+.relationship-app[data-theme="dark"] .contact-browser-list > button {
+  background: var(--surface-solid);
+  border-bottom-color: var(--border);
+}
+.relationship-app[data-theme="dark"] .contact-browser-list > button:hover { background: var(--surface-muted); }
+.relationship-app[data-theme="dark"] .voice-orb {
+  background: var(--surface-muted);
+  color: var(--accent);
+  box-shadow: 0 0 0 10px rgba(255,255,255,.025);
+}
+.relationship-app[data-theme="dark"] .document-list,
+.relationship-app[data-theme="dark"] .document-list > div { border-color: var(--border); }
