@@ -90,6 +90,8 @@ export type ContactDocument = {
   version: number;
   createdBy: TeamMemberId;
   createdAt: string;
+  approvedAt?: string | null;
+  approvedBy?: TeamMemberId | null;
   sentAt?: string | null;
 };
 
