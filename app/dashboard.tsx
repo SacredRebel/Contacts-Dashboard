@@ -1492,12 +1492,32 @@ function DocumentsView({
   rows: { contact: RelationshipContact; document: ContactDocument }[];
   onOpen: (contact: RelationshipContact) => void;
 }) {
+  const [documentQuery, setDocumentQuery] = useState("");
+  const [confidentiality, setConfidentiality] = useState<"all" | ContactDocument["confidentiality"]>("all");
+  const needle = documentQuery.trim().toLowerCase();
+  const visible = rows.filter(({ contact, document }) => {
+    const confidentialityMatch = confidentiality === "all" || document.confidentiality === confidentiality;
+    const haystack = [document.title, document.type, document.content || "", contact.name, contact.organization].join(" ").toLowerCase();
+    return confidentialityMatch && (!needle || haystack.includes(needle));
+  });
+
   return (
     <div className="page-view">
       <PageHero icon={<FileText />} eyebrow="RELATIONSHIP MEMORY" title="Documents" text="Proposals, teasers, NDAs, proof/capacity records, briefs and generated working documents stay attached to the contact." />
+      <div className="page-filterbar">
+        <div className="search-input"><Search /><input value={documentQuery} onChange={(event) => setDocumentQuery(event.target.value)} placeholder="Search document, contact, content…" /></div>
+        <select value={confidentiality} onChange={(event) => setConfidentiality(event.target.value as "all" | ContactDocument["confidentiality"])}>
+          <option value="all">All confidentiality</option>
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="confidential">Confidential</option>
+          <option value="restricted">Restricted</option>
+        </select>
+        <span><strong>{visible.length}</strong> / {rows.length}</span>
+      </div>
       <section className="table-card">
         <div className="table-header docs"><span>Document</span><span>Contact</span><span>Confidentiality</span><span>Created</span></div>
-        {rows.map(({ contact, document }) => (
+        {visible.map(({ contact, document }) => (
           <button className="table-row docs" key={document.id} onClick={() => onOpen(contact)}>
             <span><FileText /><b>{document.title}</b></span>
             <span>{contact.name}<small>{contact.organization}</small></span>
@@ -1505,7 +1525,7 @@ function DocumentsView({
             <span>{prettyDate(document.createdAt)}</span>
           </button>
         ))}
-        {!rows.length ? <EmptyMini icon={<FileText />} title="No relationship documents yet" text="Create a handoff, proposal, call brief or attach a link from a contact record." /> : null}
+        {!visible.length ? <EmptyMini icon={<FileText />} title="No documents match" text="Change the search or confidentiality filter." /> : null}
       </section>
     </div>
   );
