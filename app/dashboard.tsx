@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CircleDollarSign,
   Clipboard,
   Clock3,
@@ -35,6 +36,7 @@ import {
   Plus,
   Printer,
   Ruler,
+  RotateCcw,
   Search,
   Settings,
   Sun,
@@ -42,6 +44,7 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Trash2,
   UserRound,
   Users,
   X,
@@ -53,6 +56,7 @@ import {
   changedSince,
   contactHeadline,
   draftEmail,
+  type EmailStrategy,
   exportContactsCsv,
   exportWorkspace,
   generateCallBrief,
@@ -101,6 +105,9 @@ type GeneratedDoc = {
   subject?: string;
   emailBody?: string;
   sourceDocumentId?: string;
+  emailStrategy?: EmailStrategy;
+  emailInstruction?: string;
+  emailVariant?: number;
 };
 
 type SpeechResultListLike = {
@@ -131,6 +138,55 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STAGES = Object.keys(STAGE_LABELS) as RelationshipStage[];
 const PIPELINES = Object.keys(PIPELINE_LABELS) as Pipeline[];
+
+const EMAIL_STRATEGIES: { id: EmailStrategy; label: string; description: string }[] = [
+  { id: "smart", label: "Smart cold email", description: "Best-fit research-led draft based on this contact and pipeline." },
+  { id: "cold_research", label: "Deep personalized cold", description: "Specific public observation → fit → one low-friction CTA." },
+  { id: "short_50", label: "Short 50-word", description: "Very short, plain, clarity-first version for busy buyers." },
+  { id: "value_first", label: "Value-first", description: "Offer useful public material or a concrete asset before asking for time." },
+  { id: "check_in", label: "Check-in", description: "Relationship follow-up after prior contact, without sounding like a cold blast." },
+  { id: "proposal", label: "Proposal email", description: "Send or introduce a proposal and frame the next step clearly." },
+  { id: "nda", label: "NDA request", description: "Move from public discussion into confidentiality cleanly." },
+  { id: "capital_qualify", label: "Capital qualification", description: "Clarify directness, decision-maker role, mandate and transaction range." },
+  { id: "referral", label: "Right-person / referral", description: "Ask for the correct procurement, decision-maker or principal contact." },
+  { id: "followup_3", label: "Day 3 follow-up", description: "One added detail or proof point. No re-pitch." },
+  { id: "breakup_10", label: "Day 10 close", description: "Clean final note with an easy out." },
+  { id: "custom", label: "Custom email", description: "Describe exactly what the email needs to accomplish." },
+];
+
+function OnionAvatar({ member, compact = false }: { member: TeamMemberId; compact?: boolean }) {
+  const person = TEAM_MEMBERS[member];
+  return (
+    <span className={"onion-character onion-" + member + (compact ? " compact" : "")} style={{ color: person.color }} aria-hidden="true">
+      <span className="onion-leaves"><i /><i /><i /></span>
+      <span className="onion-bulb"><b /><b /><em /></span>
+    </span>
+  );
+}
+
+function interactionLabel(type: Interaction["type"]) {
+  if (type === "voice") return "Voice note";
+  if (type === "email") return "Email";
+  if (type === "call") return "Call";
+  if (type === "text") return "Text";
+  if (type === "meeting") return "Meeting";
+  if (type === "document") return "Document";
+  if (type === "task") return "Task";
+  if (type === "introduction") return "Introduction";
+  if (type === "status") return "Status update";
+  return "Note";
+}
+
+function interactionIcon(type: Interaction["type"]) {
+  if (type === "voice") return <Mic />;
+  if (type === "email") return <Mail />;
+  if (type === "call") return <Phone />;
+  if (type === "text") return <MessageCircle />;
+  if (type === "document") return <FileText />;
+  if (type === "task") return <ListTodo />;
+  if (type === "introduction") return <Network />;
+  return <Activity />;
+}
 
 function prettyDate(value?: string | null, includeTime = false) {
   if (!value) return "Not set";
@@ -256,6 +312,10 @@ export function Dashboard() {
   const [voiceText, setVoiceText] = useState("");
   const [listening, setListening] = useState(false);
   const [generated, setGenerated] = useState<GeneratedDoc | null>(null);
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  const [emailStrategy, setEmailStrategy] = useState<EmailStrategy>("smart");
+  const [emailInstruction, setEmailInstruction] = useState("");
+  const [emailVariant, setEmailVariant] = useState(0);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [newContact, setNewContact] = useState({
