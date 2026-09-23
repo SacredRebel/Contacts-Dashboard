@@ -171,6 +171,12 @@ function isOverdue(value?: string | null) {
   return due < start;
 }
 
+function isWithinDays(value: string | null | undefined, days: number) {
+  if (!value) return false;
+  const age = Date.now() - new Date(value).getTime();
+  return age >= 0 && age <= days * 86_400_000;
+}
+
 function validPhone(value: string) {
   return value.replace(/\D/g, "").length >= 7;
 }
@@ -1983,8 +1989,7 @@ function SentView({
     return (pipeline === "all" || contact.pipeline === pipeline) &&
       (!needle || [contact.name, contact.organization, contact.email, parts.subject, parts.body].join(" ").toLowerCase().includes(needle));
   });
-  const now = Date.now();
-  const last7 = visible.filter(({ document }) => document.sentAt && now - new Date(document.sentAt).getTime() <= 7 * 86400000).length;
+  const last7 = visible.filter(({ document }) => isWithinDays(document.sentAt, 7)).length;
   const day0 = visible.filter(({ document }) => emailTouch(document) === 0).length;
   const followups = visible.length - day0;
 
