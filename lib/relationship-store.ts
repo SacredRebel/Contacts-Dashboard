@@ -635,7 +635,7 @@ export function draftEmail(
         "Hi " + first + ",\n\n" +
         "I’m reaching out because of " + reason + ". " +
         "The fit on my side is " + offer + ".\n\n" +
-        "If this belongs with someone else on your team, who would be the right person for me to contact?\n\nPaul",
+        "If this belongs with someone else on your team, who would be the right person for me to contact?\n\n" + signature(),
     };
   }
 
@@ -650,7 +650,7 @@ export function draftEmail(
       body:
         observations[variantIndex] + ".\n\n" +
         "I’m working on " + offer + ". " +
-        cta + "\n\nPaul",
+        cta + "\n\n" + signature(),
     };
   }
 
@@ -664,7 +664,7 @@ export function draftEmail(
         "Hi " + first + ",\n\n" +
         reason + " is what made me think this may be worth putting in front of you.\n\n" +
         valueLine + "\n\n" +
-        "If it’s useful, I’ll send it over. If not, no problem.\n\nPaul",
+        "If it’s useful, I’ll send it over. If not, no problem.\n\n" + signature(),
     };
   }
 
