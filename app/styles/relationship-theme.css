@@ -538,7 +538,7 @@
 .relationship-app .empty-detail strong { color: var(--text-2); }
 
 /* Mobile should feel like a designed app, not collapsed desktop. */
-@media (max-width: 740px) {
+@media (max-width: 740px) and (pointer: coarse), (max-width: 480px) {
   .relationship-app {
     min-height: 100dvh;
   }
@@ -657,7 +657,7 @@
 /* Dedicated mobile bottom navigation */
 .mobile-bottom-nav { display: none; }
 
-@media (max-width: 740px) {
+@media (max-width: 740px) and (pointer: coarse), (max-width: 480px) {
   .relationship-app .main-content {
     padding-bottom: calc(82px + env(safe-area-inset-bottom));
   }
@@ -1133,7 +1133,7 @@
 /* Mobile information architecture */
 .mobile-contact-meta { display:none; }
 
-@media (max-width: 740px) {
+@media (max-width: 740px) and (pointer: coarse), (max-width: 480px) {
   .dashboard-v2 { gap:10px; }
   .dashboard-intro {
     display:block;
@@ -1455,10 +1455,180 @@
   }
 }
 
-@media (max-width: 1120px) and (min-width: 741px) {
+@media (max-width: 1120px) and (pointer: fine) {
   .dashboard-intro {
     align-items:start;
   }
   .dashboard-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dashboard-main-grid { grid-template-columns:1fr; }
+}
+
+
+/* Desktop must never collapse into the phone drawer because of browser zoom or OS scaling. */
+@media (pointer: fine) {
+  .relationship-app {
+    display: grid !important;
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    min-width: 680px;
+  }
+
+  .relationship-app .sidebar {
+    position: sticky !important;
+    inset: auto !important;
+    top: 0 !important;
+    width: 82px !important;
+    height: 100vh !important;
+    padding: 16px 10px 12px !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .relationship-app .brand {
+    justify-content: center !important;
+    padding: 2px 0 18px !important;
+  }
+  .relationship-app .brand > div:nth-child(2) { display: none !important; }
+  .relationship-app .brand-mark {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+
+  .relationship-app .main-nav button,
+  .relationship-app .settings-button {
+    position: relative;
+    justify-content: center !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+  }
+  .relationship-app .main-nav button > span,
+  .relationship-app .settings-button {
+    font-size: 0 !important;
+  }
+  .relationship-app .main-nav button svg,
+  .relationship-app .settings-button svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .relationship-app .main-nav button.active::after { display: none !important; }
+  .relationship-app .main-nav em {
+    position: absolute !important;
+    right: 6px !important;
+    top: 4px !important;
+    min-width: 17px !important;
+    margin: 0 !important;
+    padding: 1px 4px !important;
+    font-size: 7px !important;
+  }
+
+  .relationship-app .sidebar-team {
+    padding: 14px 0 9px !important;
+  }
+  .relationship-app .sidebar-team > span { display: none !important; }
+  .relationship-app .sidebar-team button {
+    display: grid !important;
+    grid-template-columns: 30px !important;
+    justify-content: center !important;
+    min-height: 43px !important;
+    padding: 5px !important;
+  }
+  .relationship-app .sidebar-team button strong,
+  .relationship-app .sidebar-team button svg { display: none !important; }
+  .relationship-app .sidebar-team i {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .relationship-app .mobile-close,
+  .relationship-app .menu-button,
+  .relationship-app .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .relationship-app .app-main {
+    min-width: 0 !important;
+  }
+  .relationship-app .main-content {
+    min-width: 0 !important;
+    padding: clamp(14px, 2vw, 28px) !important;
+    padding-bottom: clamp(14px, 2vw, 28px) !important;
+  }
+  .relationship-app .home-view,
+  .relationship-app .page-view {
+    min-width: 0 !important;
+    width: min(1440px, 100%) !important;
+  }
+
+  .relationship-app .dashboard-intro {
+    display: flex !important;
+    align-items: end !important;
+    min-height: 132px !important;
+    padding: 22px 24px !important;
+  }
+  .relationship-app .dashboard-intro-copy h1 {
+    max-width: 760px;
+    font-size: clamp(32px, 4.2vw, 50px) !important;
+    line-height: 1 !important;
+    white-space: normal;
+  }
+  .relationship-app .dashboard-intro-copy p {
+    max-width: 680px;
+    font-size: 12px !important;
+  }
+  .relationship-app .dashboard-intro-actions {
+    display: flex !important;
+    margin-top: 0 !important;
+  }
+
+  .relationship-app .dashboard-kpis {
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  }
+  .relationship-app .dashboard-main-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+
+@media (min-width: 1181px) and (pointer: fine) {
+  .relationship-app {
+    grid-template-columns: 250px minmax(0,1fr) !important;
+    min-width: 0;
+  }
+  .relationship-app .sidebar {
+    width: auto !important;
+    padding: 20px 14px 16px !important;
+  }
+  .relationship-app .brand {
+    justify-content: flex-start !important;
+    padding: 3px 7px 22px !important;
+  }
+  .relationship-app .brand > div:nth-child(2) { display: block !important; }
+  .relationship-app .brand-mark {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .relationship-app .main-nav button,
+  .relationship-app .settings-button {
+    justify-content: flex-start !important;
+    min-height: 44px !important;
+    padding: 0 12px !important;
+    font-size: 11px !important;
+  }
+  .relationship-app .main-nav button > span { display: inline !important; }
+  .relationship-app .sidebar-team {
+    padding: 15px 5px 10px !important;
+  }
+  .relationship-app .sidebar-team > span { display: block !important; }
+  .relationship-app .sidebar-team button {
+    grid-template-columns: 28px minmax(0,1fr) 16px !important;
+    justify-content: stretch !important;
+    padding: 5px 7px !important;
+  }
+  .relationship-app .sidebar-team button strong { display: block !important; }
+  .relationship-app .sidebar-team button svg { display: block !important; }
+  .relationship-app .dashboard-kpis {
+    grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  }
+  .relationship-app .dashboard-main-grid {
+    grid-template-columns: minmax(0,1.35fr) minmax(320px,.65fr) !important;
+  }
 }

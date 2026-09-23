@@ -1,7 +1,7 @@
 /* Responsive desktop-to-mobile behavior */
 
 /* Narrow desktop / laptop: keep desktop behavior, use compact rail instead of a mobile drawer. */
-@media (max-width: 1180px) and (min-width: 741px) {
+@media (max-width: 1180px) and (pointer: fine) {
   .relationship-app {
     grid-template-columns: 82px minmax(0,1fr);
   }
@@ -143,7 +143,7 @@
 }
 
 /* True tablet/phone layout begins here. */
-@media (max-width: 740px) {
+@media (max-width: 740px) and (pointer: coarse), (max-width: 480px) {
   body { background: #f4f6f4; }
 
   .relationship-app {
@@ -398,7 +398,7 @@
   .contact-browser-list { max-height: calc(100vh - 245px); }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 520px) and (pointer: coarse), (max-width: 420px) {
   .topbar-actions { gap: 4px; }
   .icon-action,
   .primary-action,
