@@ -242,6 +242,7 @@ export function Dashboard() {
   const [member, setMember] = useState<TeamMemberId>("paul");
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [shellMode, setShellMode] = useState<"desktop" | "mobile">("desktop");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileBrowseOpen, setMobileBrowseOpen] = useState(false);
@@ -262,6 +263,17 @@ export function Dashboard() {
   });
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const detectShell = () => {
+      const hasFinePointer = window.matchMedia("(any-pointer: fine)").matches || window.matchMedia("(any-hover: hover)").matches;
+      const obviousPhone = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) && !/iPad/i.test(navigator.userAgent);
+      setShellMode(hasFinePointer && !obviousPhone ? "desktop" : "mobile");
+    };
+    detectShell();
+    window.addEventListener("resize", detectShell);
+    return () => window.removeEventListener("resize", detectShell);
+  }, []);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -948,7 +960,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="relationship-app" data-theme={theme}>
+    <div className={"relationship-app " + (shellMode === "desktop" ? "desktop-shell" : "mobile-shell")} data-theme={theme}>
       <Toaster richColors position="bottom-right" />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
