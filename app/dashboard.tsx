@@ -1415,6 +1415,22 @@ function HomeView({
         <button onClick={() => onGo("contacts")}><span className="kpi-icon blue"><BriefcaseBusiness /></span><span><small>Project network</small><strong>{metrics.architects + metrics.contractors}</strong><em>{metrics.architects} architects · {metrics.contractors} builders</em></span></button>
       </section>
 
+      <section className="workspace-launcher">
+        <div className="workspace-launcher-head">
+          <div><span>WORKSPACE</span><strong>Jump into a page</strong><small>Every area has one job. Open the page you need instead of digging through one giant screen.</small></div>
+        </div>
+        <div className="workspace-launcher-grid">
+          <button className="launch-contacts" onClick={() => onGo("contacts")}><span><Users /></span><strong>Contacts</strong><small>People, companies, context and next actions</small><em>{metrics.total}</em></button>
+          <button className="launch-capital" onClick={() => onGo("capital")}><span><CircleDollarSign /></span><strong>Capital</strong><small>Qualification, directness and disclosure</small><em>{metrics.capital}</em></button>
+          <button className="launch-outreach" onClick={() => onGo("outreach")}><span><Mail /></span><strong>Outreach</strong><small>Draft, approve and prepare messages</small><ArrowUpRight /></button>
+          <button className="launch-sent" onClick={() => onGo("sent")}><span><CheckCircle2 /></span><strong>Sent</strong><small>Communication history and sent record</small><ArrowUpRight /></button>
+          <button className="launch-tasks" onClick={() => onGo("tasks")}><span><ListTodo /></span><strong>Tasks</strong><small>Assignments, due dates and handoffs</small><em>{metrics.due}</em></button>
+          <button className="launch-documents" onClick={() => onGo("documents")}><span><FileText /></span><strong>Documents</strong><small>Proposals, briefs, diligence and files</small><ArrowUpRight /></button>
+          <button className="launch-network" onClick={() => onGo("network")}><span><Network /></span><strong>Network</strong><small>Introductions and relationship paths</small><ArrowUpRight /></button>
+          <button className="launch-activity" onClick={() => onGo("activity")}><span><Activity /></span><strong>Activity</strong><small>Team history and chronological changes</small><ArrowUpRight /></button>
+        </div>
+      </section>
+
       <div className="dashboard-main-grid">
         <section className="dashboard-panel priority-panel">
           <div className="dashboard-panel-head">
@@ -1948,6 +1964,135 @@ function OutreachView({
             </div>
           </section>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+function SentView({
+  rows,
+  onOpen,
+}: {
+  rows: { contact: RelationshipContact; document: ContactDocument }[];
+  onOpen: (contact: RelationshipContact) => void;
+}) {
+  const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
+  const [search, setSearch] = useState("");
+  const needle = search.trim().toLowerCase();
+  const visible = rows.filter(({ contact, document }) => {
+    const parts = emailDocumentParts(document);
+    return (pipeline === "all" || contact.pipeline === pipeline) &&
+      (!needle || [contact.name, contact.organization, contact.email, parts.subject, parts.body].join(" ").toLowerCase().includes(needle));
+  });
+  const now = Date.now();
+  const last7 = visible.filter(({ document }) => document.sentAt && now - new Date(document.sentAt).getTime() <= 7 * 86400000).length;
+  const day0 = visible.filter(({ document }) => emailTouch(document) === 0).length;
+  const followups = visible.length - day0;
+
+  return (
+    <div className="page-view sent-page">
+      <PageHero icon={<CheckCircle2 />} eyebrow="COMMUNICATION HISTORY" title="Sent" text="A dedicated record of what left the system, who received it, when it was sent, and which relationship it belongs to." />
+      <section className="sent-summary-grid">
+        <div><span>Total sent</span><strong>{visible.length}</strong><small>matching current filters</small></div>
+        <div><span>Last 7 days</span><strong>{last7}</strong><small>recent outbound messages</small></div>
+        <div><span>Initial outreach</span><strong>{day0}</strong><small>Day 0 messages</small></div>
+        <div><span>Follow-ups</span><strong>{followups}</strong><small>Day 3 / Day 10</small></div>
+      </section>
+      <div className="page-filterbar sent-filterbar">
+        <div className="search-input"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sent email, contact, subject…" /></div>
+        <select value={pipeline} onChange={(e) => setPipeline(e.target.value as Pipeline | "all")}>
+          <option value="all">All pipelines</option>
+          {PIPELINES.map((item) => <option key={item} value={item}>{PIPELINE_LABELS[item]}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> sent</span>
+      </div>
+      <section className="sent-history-card">
+        <div className="sent-history-head"><span>Recipient</span><span>Message</span><span>Touch</span><span>Sent</span></div>
+        {visible.map(({ contact, document }) => {
+          const parts = emailDocumentParts(document);
+          return (
+            <button key={document.id} className="sent-history-row" onClick={() => onOpen(contact)}>
+              <span className="sent-person"><span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span><span><strong>{contact.name}</strong><small>{contact.organization}<br />{contact.email || "No email"}</small></span></span>
+              <span className="sent-message"><strong>{parts.subject || document.title}</strong><small>{parts.body.slice(0,120)}{parts.body.length > 120 ? "…" : ""}</small></span>
+              <span><em className="sent-touch">Day {emailTouch(document)}</em></span>
+              <span className="sent-date">{document.sentAt ? prettyDate(document.sentAt, true) : "Unknown"}</span>
+            </button>
+          );
+        })}
+        {!visible.length ? <EmptyMini icon={<Mail />} title="No sent messages match" text="Change the search or pipeline filter." /> : null}
+      </section>
+    </div>
+  );
+}
+
+function SettingsView({
+  contacts,
+  member,
+  theme,
+  onChooseUser,
+  onToggleTheme,
+  onExportJson,
+  onExportCsv,
+  onImport,
+}: {
+  contacts: RelationshipContact[];
+  member: TeamMemberId;
+  theme: ThemeMode;
+  onChooseUser: (id: TeamMemberId) => void;
+  onToggleTheme: () => void;
+  onExportJson: () => void;
+  onExportCsv: () => void;
+  onImport: () => void;
+}) {
+  return (
+    <div className="page-view settings-page">
+      <PageHero icon={<Settings />} eyebrow="WORKSPACE CONTROL" title="Settings" text="Control identity, appearance, data portability and the behavior of this local Relationship OS workspace." />
+      <div className="settings-page-grid">
+        <section className="settings-card team-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Users /></span><div><strong>Team identity</strong><small>Choose who is currently operating the workspace. Every action keeps that person’s color attribution.</small></div></div>
+          <div className="settings-member-grid">
+            {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
+              <button key={id} className={member === id ? "active" : ""} onClick={() => onChooseUser(id)}>
+                <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Full workspace access</small></span>
+                {member === id ? <CheckCircle2 /> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="settings-card appearance-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Sun /></span><div><strong>Appearance</strong><small>Switch the whole application between the bright workspace and dark workspace themes.</small></div></div>
+          <button className="theme-setting-button" onClick={onToggleTheme}>
+            <span className="theme-preview">{theme === "light" ? <Moon /> : <Sun />}</span>
+            <span><strong>{theme === "light" ? "Switch to dark mode" : "Switch to light mode"}</strong><small>Current theme: {theme}</small></span>
+            <ChevronRight />
+          </button>
+        </section>
+
+        <section className="settings-card data-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Download /></span><div><strong>Workspace data</strong><small>Back up, export or restore this local workspace. JSON preserves the complete Relationship OS state.</small></div></div>
+          <div className="settings-data-stats">
+            <div><strong>{contacts.length}</strong><span>contacts</span></div>
+            <div><strong>{contacts.reduce((sum,c) => sum + c.documents.length,0)}</strong><span>documents</span></div>
+            <div><strong>{contacts.reduce((sum,c) => sum + c.interactions.length,0)}</strong><span>interactions</span></div>
+          </div>
+          <div className="settings-action-list">
+            <button onClick={onExportJson}><span><Download /></span><span><strong>Export full JSON backup</strong><small>Complete restorable workspace</small></span><ChevronRight /></button>
+            <button onClick={onExportCsv}><span><FileText /></span><span><strong>Export contacts CSV</strong><small>Portable contact and pipeline table</small></span><ChevronRight /></button>
+            <button onClick={onImport}><span><Upload /></span><span><strong>Import JSON backup</strong><small>Restore a previously exported workspace</small></span><ChevronRight /></button>
+          </div>
+        </section>
+
+        <section className="settings-card system-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><ShieldCheck /></span><div><strong>Operating rules</strong><small>The system is intentionally human-controlled. Sensitive decisions are never silently automated.</small></div></div>
+          <div className="settings-rule-list">
+            <div><CheckCircle2 /><span><strong>Human approval</strong><small>Email, disclosure and capital qualification remain explicit actions.</small></span></div>
+            <div><ShieldCheck /><span><strong>Local-first workspace</strong><small>No shared backend is enabled in this build.</small></span></div>
+            <div><Activity /><span><strong>Auditable history</strong><small>Meaningful relationship changes stay tied to people and timestamps.</small></span></div>
+          </div>
+        </section>
       </div>
     </div>
   );
