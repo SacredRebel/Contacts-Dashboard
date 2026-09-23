@@ -1303,6 +1303,7 @@ export function Dashboard() {
               onApprove={approveQueuedEmail}
               onOpenEmail={openQueuedEmail}
               onMarkSent={markQueuedEmailSent}
+              onRemove={removeQueuedEmailDraft}
             />
           ) : null}
 
@@ -1412,7 +1413,7 @@ export function Dashboard() {
             <textarea value={voiceText} onChange={(event) => setVoiceText(event.target.value)} placeholder="Example: I just talked to Brian. He needs the teaser, a follow-up email, and a call Wednesday. He says he represents the money but I’m not sure he is the principal…" />
             <div className="modal-actions">
               <button className="secondary" onClick={listening ? stopVoice : startVoice}>{listening ? "Stop listening" : "Start listening"}</button>
-              <button className="primary" disabled={!selected || !voiceText.trim()} onClick={saveVoice}>Save to timeline</button>
+              <button className="primary" disabled={!selected || !voiceText.trim()} onClick={saveVoice}>Save update</button>
             </div>
           </div>
         </div>
@@ -1475,15 +1476,60 @@ export function Dashboard() {
         </div>
       ) : null}
 
+      {emailComposerOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEmailComposerOpen(false); }}>
+          <div className="modal email-composer-modal">
+            <div className="modal-head">
+              <div><Sparkles /><span><strong>Draft an email</strong><small>{selected ? selected.name + " · " + selected.organization : "Select a contact first"}</small></span></div>
+              <button onClick={() => setEmailComposerOpen(false)}><X /></button>
+            </div>
+            <div className="email-composer-source">
+              <span><ShieldCheck /></span>
+              <div><strong>Cold Email OS rules are active</strong><small>Research-led · short/plain copy · one CTA · human review · pipeline-specific framing.</small></div>
+            </div>
+            <div className="email-composer-grid">
+              <label className="email-strategy-field">
+                <span>Email type / strategy</span>
+                <select value={emailStrategy} onChange={(event) => { setEmailStrategy(event.target.value as EmailStrategy); setEmailVariant(0); }}>
+                  {EMAIL_STRATEGIES.map((strategy) => <option key={strategy.id} value={strategy.id}>{strategy.label}</option>)}
+                </select>
+                <small>{EMAIL_STRATEGIES.find((strategy) => strategy.id === emailStrategy)?.description}</small>
+              </label>
+              <label className="email-custom-field">
+                <span>Custom instruction <em>optional</em></span>
+                <textarea
+                  value={emailInstruction}
+                  onChange={(event) => setEmailInstruction(event.target.value)}
+                  placeholder="Example: Ask them to sign our NDA before I send the confidential proposal, keep it warm because Mark already spoke with them."
+                />
+                <small>Use this for an NDA request, a proposal, a specific document, a personal check-in, or anything unusual.</small>
+              </label>
+            </div>
+            <div className="email-strategy-chips">
+              {["cold_research","short_50","value_first","check_in","proposal","nda","capital_qualify"].map((id) => {
+                const strategy = EMAIL_STRATEGIES.find((item) => item.id === id);
+                if (!strategy) return null;
+                return <button key={id} className={emailStrategy === id ? "active" : ""} onClick={() => { setEmailStrategy(id as EmailStrategy); setEmailVariant(0); }}>{strategy.label}</button>;
+              })}
+            </div>
+            <div className="modal-actions">
+              <button className="secondary" onClick={() => setEmailComposerOpen(false)}>Cancel</button>
+              <button className="primary" disabled={!selected} onClick={generateComposerEmail}><Sparkles /> Generate email</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {generated ? (
         <div className="modal-backdrop document-modal-wrap" onMouseDown={(event) => { if (event.target === event.currentTarget) setGenerated(null); }}>
           <div className="modal document-modal">
             <div className="modal-head">
-              <div><Sparkles /><span><strong>{generated.title}</strong><small>Working draft · human review required</small></span></div>
+              <div><Sparkles /><span><strong>{generated.title}</strong><small>{generated.type === "email" && generated.emailStrategy ? (EMAIL_STRATEGIES.find((strategy) => strategy.id === generated.emailStrategy)?.label || "Email") + " · " : ""}Working draft · human review required</small></span></div>
               <button onClick={() => setGenerated(null)}><X /></button>
             </div>
             <textarea className="document-editor" value={generated.content} onChange={(event) => setGenerated({ ...generated, content: event.target.value })} />
             <div className="modal-actions document-actions">
+              {generated.type === "email" ? <button className="secondary recraft-email" onClick={recraftGeneratedEmail}><RotateCcw /> Recraft / another version</button> : null}
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
@@ -1990,6 +2036,7 @@ function OutreachView({
   onApprove,
   onOpenEmail,
   onMarkSent,
+  onRemove,
 }: {
   contacts: RelationshipContact[];
   queued: { contact: RelationshipContact; document: ContactDocument }[];
@@ -2001,6 +2048,7 @@ function OutreachView({
   onApprove: (contactId: string, documentId: string) => void;
   onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
   onMarkSent: (contactId: string, documentId: string) => void;
+  onRemove: (contactId: string, documentId: string) => void;
 }) {
   const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
   const visible = queued.filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline);
@@ -2061,6 +2109,7 @@ function OutreachView({
                     </span>
                     <span className="outreach-actions">
                       <button className="secondary" onClick={() => onEdit(contact, document)}>Edit draft</button>
+                      <button className="secondary remove-draft" onClick={() => onRemove(contact.id, document.id)}><Trash2 /> Remove</button>
                       {!document.approvedAt ? <button className="secondary approve-draft" onClick={() => onApprove(contact.id, document.id)}><ShieldCheck /> Approve</button> : null}
                       <button className="secondary" disabled={!contact.email || !document.approvedAt} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
                       <button className="primary" disabled={!document.approvedAt} onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
