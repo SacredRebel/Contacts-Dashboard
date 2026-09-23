@@ -2183,3 +2183,29 @@
     font-size:21px !important;
   }
 }
+
+
+/* Full-width desktop resilience: never cap the application into a small island
+   when Chrome has a per-site zoom level below 100%. */
+.relationship-app.desktop-shell {
+  width: 100vw !important;
+  max-width: none !important;
+}
+.relationship-app.desktop-shell .app-main {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+.relationship-app.desktop-shell .main-content {
+  width: 100% !important;
+  max-width: none !important;
+}
+.relationship-app.desktop-shell .home-view,
+.relationship-app.desktop-shell .page-view,
+.relationship-app.desktop-shell .dashboard-v2,
+.relationship-app.desktop-shell .contacts-workspace {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
