@@ -1324,55 +1324,91 @@ function HomeView({
   const recent = changed.slice(0, 7);
 
   return (
-    <div className="home-view">
-      <section className="hero-card">
-        <div>
-          <span>DAILY OPERATING VIEW</span>
-          <h1>Who needs attention next?</h1>
-          <p>One shared relationship brain for Paul, Mark and Jonathan. Calls, notes, tasks, documents and capital verification stay attached to the person.</p>
+    <div className="home-view dashboard-v2">
+      <section className="dashboard-intro">
+        <div className="dashboard-intro-copy">
+          <span>RELATIONSHIP OS</span>
+          <h1>Today’s command center</h1>
+          <p>See what needs attention, move relationships forward, and keep every call, document and follow-up attached to the right person.</p>
         </div>
-        <div className="hero-number"><strong>{metrics.total}</strong><span>live contacts</span></div>
+        <div className="dashboard-intro-actions">
+          <button className="dashboard-secondary" onClick={() => onGo("contacts")}><Users /> Browse network</button>
+          <button className="dashboard-primary" onClick={() => onGo("tasks")}><ListTodo /> Open tasks</button>
+        </div>
       </section>
 
-      <div className="metric-grid">
-        <button onClick={() => onGo("capital")}><Landmark /><span><strong>{metrics.capital}</strong>Capital</span></button>
-        <button onClick={() => onGo("contacts")}><Ruler /><span><strong>{metrics.architects}</strong>Architects</span></button>
-        <button onClick={() => onGo("contacts")}><HardHat /><span><strong>{metrics.contractors}</strong>Contractors</span></button>
-        <button onClick={() => onGo("tasks")} className={metrics.due ? "attention" : ""}><Clock3 /><span><strong>{metrics.due}</strong>Due now</span></button>
-        <button onClick={() => onGo("capital")}><ShieldCheck /><span><strong>{metrics.qualified}</strong>Qualified / active</span></button>
-      </div>
+      <section className="dashboard-kpis">
+        <button onClick={() => onGo("contacts")}><span className="kpi-icon neutral"><Users /></span><span><small>Relationship network</small><strong>{metrics.total}</strong><em>Total contacts</em></span></button>
+        <button onClick={() => onGo("tasks")} className={metrics.due ? "urgent" : ""}><span className="kpi-icon warm"><Clock3 /></span><span><small>Needs attention</small><strong>{metrics.due}</strong><em>Due / overdue</em></span></button>
+        <button onClick={() => onGo("capital")}><span className="kpi-icon green"><Landmark /></span><span><small>Capital network</small><strong>{metrics.capital}</strong><em>{metrics.qualified} qualified / active</em></span></button>
+        <button onClick={() => onGo("contacts")}><span className="kpi-icon blue"><BriefcaseBusiness /></span><span><small>Project network</small><strong>{metrics.architects + metrics.contractors}</strong><em>{metrics.architects} architects · {metrics.contractors} builders</em></span></button>
+      </section>
 
-      <div className="home-grid">
-        <section className="home-card">
-          <div className="card-head"><div><CalendarClock /><span><strong>Due / overdue</strong><small>Do these next</small></span></div><button onClick={() => onGo("tasks")}>All tasks <ArrowUpRight /></button></div>
-          <div className="action-list">
+      <div className="dashboard-main-grid">
+        <section className="dashboard-panel priority-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><CalendarClock /></span><span><strong>Priority queue</strong><small>What should move next</small></span></div>
+            <button onClick={() => onGo("tasks")}>View all <ArrowUpRight /></button>
+          </div>
+          <div className="priority-list">
             {due.length ? due.map(({ contact, task }) => (
-              <div key={task.id} className="action-item">
-                <button className="action-copy" onClick={() => onOpen(contact)}>
-                  <span className={"pipeline-dot " + contact.pipeline}>{pipelineIcon(contact.pipeline)}</span>
-                  <span><strong>{task.title}</strong><small>{contact.name} · {contact.organization} · {task.dueAt ? compactDate(task.dueAt) : "No date"}</small></span>
+              <div key={task.id} className="priority-row">
+                <button className="priority-person" onClick={() => onOpen(contact)}>
+                  <span className={"pipeline-avatar " + contact.pipeline}>{initials(contact.name || contact.organization)}</span>
+                  <span className="priority-copy">
+                    <strong>{task.title}</strong>
+                    <small>{contact.name} · {contact.organization}</small>
+                  </span>
                 </button>
+                <span className={isOverdue(task.dueAt) ? "due-chip overdue" : "due-chip"}>{task.dueAt ? compactDate(task.dueAt) : "No date"}</span>
                 <button className="complete-circle" onClick={() => onCompleteTask(contact.id, task.id)} title="Complete"><Check /></button>
               </div>
             )) : <EmptyMini icon={<CheckCircle2 />} title="Nothing urgent" text="No dated tasks are due today." />}
           </div>
         </section>
 
-        <section className="home-card">
-          <div className="card-head"><div><Activity /><span><strong>What changed?</strong><small>Since your last visit</small></span></div><button onClick={() => onGo("activity")}>Activity <ArrowUpRight /></button></div>
-          <div className="change-list">
+        <section className="dashboard-panel network-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><BriefcaseBusiness /></span><span><strong>Network overview</strong><small>Current composition</small></span></div>
+          </div>
+          <div className="network-stat-stack">
+            {([
+              ["capital", metrics.capital, metrics.total],
+              ["architect", metrics.architects, metrics.total],
+              ["contractor", metrics.contractors, metrics.total],
+            ] as [Pipeline, number, number][]).map(([pipeline, count, total]) => (
+              <button key={pipeline} onClick={() => onGo(pipeline === "capital" ? "capital" : "contacts")}>
+                <span className={"network-stat-icon " + pipeline}>{pipelineIcon(pipeline)}</span>
+                <span className="network-stat-copy"><strong>{PIPELINE_LABELS[pipeline]}</strong><small>{count} contacts</small></span>
+                <span className="network-stat-percent">{total > 0 ? Math.round((count / total) * 100) : 0}%</span>
+              </button>
+            ))}
+          </div>
+          <button className="network-open" onClick={() => onGo("network")}><Network /> Open relationship graph <ArrowUpRight /></button>
+        </section>
+
+        <section className="dashboard-panel activity-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><Activity /></span><span><strong>Recent activity</strong><small>Since your last visit</small></span></div>
+            <button onClick={() => onGo("activity")}>All activity <ArrowUpRight /></button>
+          </div>
+          <div className="dashboard-activity-list">
             {recent.length ? recent.map((row) => (
               <button key={row.at + row.contact.id + row.summary} onClick={() => onOpen(row.contact)}>
                 <i style={{ background: row.userId ? TEAM_MEMBERS[row.userId].color : "#94a3b8" }} />
                 <span><strong>{row.summary}</strong><small>{row.contact.name} · {prettyDate(row.at, true)}</small></span>
+                <ChevronRight />
               </button>
             )) : <EmptyMini icon={<Activity />} title="No new logged changes" text="New calls, notes and tasks will show here." />}
           </div>
         </section>
 
-        <section className="home-card capital-watch">
-          <div className="card-head"><div><CircleDollarSign /><span><strong>Capital watch</strong><small>High-intent / verification</small></span></div><button onClick={() => onGo("capital")}>Capital <ArrowUpRight /></button></div>
-          <div className="capital-list">
+        <section className="dashboard-panel capital-focus-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><CircleDollarSign /></span><span><strong>Capital focus</strong><small>High-intent / verification</small></span></div>
+            <button onClick={() => onGo("capital")}>Open capital <ArrowUpRight /></button>
+          </div>
+          <div className="capital-focus-list">
             {highIntent.length ? highIntent.map((contact) => (
               <button key={contact.id} onClick={() => onOpen(contact)}>
                 <span className="avatar-small">{initials(contact.name)}</span>
@@ -1381,23 +1417,6 @@ function HomeView({
               </button>
             )) : <EmptyMini icon={<ShieldCheck />} title="No high-intent capital yet" text="Replies and qualified contacts will surface here." />}
           </div>
-        </section>
-
-        <section className="home-card pipeline-card">
-          <div className="card-head"><div><BriefcaseBusiness /><span><strong>Network composition</strong><small>216 researched contacts loaded</small></span></div></div>
-          <div className="pipeline-bars">
-            {([
-              ["capital", metrics.capital, metrics.total],
-              ["architect", metrics.architects, metrics.total],
-              ["contractor", metrics.contractors, metrics.total],
-            ] as [Pipeline, number, number][]).map(([pipeline, count, total]) => (
-              <div key={pipeline}>
-                <span><strong>{PIPELINE_LABELS[pipeline]}</strong><em>{count}</em></span>
-                <i><b className={pipeline} style={{ width: (total > 0 ? Math.max(2, (count / total) * 100) : 0) + "%" }} /></i>
-              </div>
-            ))}
-          </div>
-          <p>The working contact seed was migrated from the Notion Outreach Intelligence System: 62 capital, 68 architects and 86 contractors/builders.</p>
         </section>
       </div>
     </div>
