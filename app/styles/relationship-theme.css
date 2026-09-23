@@ -2432,3 +2432,21 @@
 .relationship-app[data-theme="dark"][data-view="documents"] { --view-soft:#182438; }
 .relationship-app[data-theme="dark"][data-view="network"]   { --view-soft:#132a30; }
 .relationship-app[data-theme="dark"][data-view="activity"]  { --view-soft:#301d25; }
+
+
+@media (min-width: 1180px) {
+  .relationship-app.desktop-shell .main-nav button:nth-child(4),
+  .relationship-app.desktop-shell .main-nav button:nth-child(7) {
+    margin-left: 10px !important;
+  }
+  .relationship-app.desktop-shell .main-nav button:nth-child(4)::before,
+  .relationship-app.desktop-shell .main-nav button:nth-child(7)::before {
+    position: absolute;
+    left: -8px;
+    top: 9px;
+    bottom: 9px;
+    width: 1px;
+    background: rgba(255,255,255,.11);
+    content: "";
+  }
+}
