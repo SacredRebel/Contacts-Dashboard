@@ -1276,6 +1276,7 @@ export function Dashboard() {
                     onStage={updateStage}
                     onPatch={(changes) => patchContact(selected.id, changes)}
                     onVoice={startVoice}
+                    onDraft={openEmailComposer}
                     onComplete={completePrimaryAction}
                     onTask={addTask}
                     onDocument={addDocumentLink}
@@ -1679,6 +1680,7 @@ function ContactDetail({
   onStage,
   onPatch,
   onVoice,
+  onDraft,
   onComplete,
   onTask,
   onDocument,
@@ -1693,6 +1695,7 @@ function ContactDetail({
   onStage: (stage: RelationshipStage) => void;
   onPatch: (changes: Partial<RelationshipContact>) => void;
   onVoice: () => void;
+  onDraft: () => void;
   onComplete: () => void;
   onTask: () => void;
   onDocument: () => void;
@@ -1703,6 +1706,7 @@ function ContactDetail({
   const depth = relationshipDepth(contact);
   const primaryTask = nextOpenTask(contact);
   const timeline = [...contact.interactions].sort((a, b) => b.at.localeCompare(a.at));
+  const recentActivity = timeline.slice(0, 4);
   const lastInteraction = timeline[0];
   const index = filtered.findIndex((item) => item.id === contact.id);
   const phoneOk = validPhone(contact.phone);
@@ -1753,12 +1757,42 @@ function ContactDetail({
         {phoneOk ? <a href={phoneHref(contact.phone)}><Phone /><span>Call</span></a> : <button disabled><Phone /><span>Call</span></button>}
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
-        <button onClick={onVoice}><Mic /><span>Voice</span></button>
-        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft</span></button>
-        <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
+        <button onClick={onVoice}><Mic /><span>Voice update</span></button>
+        <button onClick={onDraft} className="draft-action"><Sparkles /><span>Draft email</span><ChevronDown /></button>
+        <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Complete action</span></button>
       </div>
 
       <div className="detail-body">
+        <section className="contact-now-card">
+          <div className="contact-now-head">
+            <div>
+              <span className="contact-now-icon"><Activity /></span>
+              <span><strong>What’s happening now</strong><small>The latest calls, emails, notes and team updates on this contact.</small></span>
+            </div>
+            <em className={"stage stage-" + contact.stage}>{STAGE_LABELS[contact.stage]}</em>
+          </div>
+          <div className="contact-now-list">
+            {recentActivity.length ? recentActivity.map((item) => (
+              <div key={item.id} className={"contact-now-row activity-" + item.type}>
+                <OnionAvatar member={item.userId} />
+                <span className="contact-now-type">{interactionIcon(item.type)}</span>
+                <span className="contact-now-copy">
+                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{interactionLabel(item.type)}</em><small>{prettyDate(item.at, true)}</small></span>
+                  <p>{item.summary}</p>
+                  {item.type === "voice" && item.transcript ? <blockquote>{item.transcript.slice(0, 240)}{item.transcript.length > 240 ? "…" : ""}</blockquote> : null}
+                </span>
+              </div>
+            )) : (
+              <div className="contact-now-empty"><Activity /><span><strong>No team activity yet</strong><small>A call, voice note, email, text or note will appear here immediately.</small></span></div>
+            )}
+          </div>
+          <div className="contact-now-footer">
+            <span><strong>Relationship:</strong> {depth.label}</span>
+            <span><strong>Last update:</strong> {lastInteraction ? prettyDate(lastInteraction.at, true) : "No updates yet"}</span>
+            <span><strong>Owner:</strong> {TEAM_MEMBERS[contact.owner].name}</span>
+          </div>
+        </section>
+
         {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
 
         <section className="next-action-card focus-card">
@@ -1770,7 +1804,7 @@ function ContactDetail({
             <input value={contact.nextAction} onChange={(e) => onPatch({ nextAction: e.target.value })} placeholder="What needs to happen next?" />
             <input type="date" value={contact.nextActionDue ? contact.nextActionDue.slice(0, 10) : ""} onChange={(e) => onPatch({ nextActionDue: e.target.value ? new Date(e.target.value + "T17:00:00").toISOString() : null })} />
           </div>
-          {primaryTask ? <div className="task-chip"><span style={{ background: TEAM_MEMBERS[primaryTask.assignedTo].color }}>{TEAM_MEMBERS[primaryTask.assignedTo].initials}</span><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
+          {primaryTask ? <div className="task-chip"><OnionAvatar member={primaryTask.assignedTo} compact /><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
         </section>
 
         <DisclosureSection
@@ -1904,8 +1938,8 @@ function ContactDetail({
 
         <DisclosureSection
           icon={<Activity />}
-          title="Relationship timeline"
-          subtitle="Calls, emails, voice notes and decisions"
+          title="Full activity history"
+          subtitle="Every logged interaction, decision and relationship change"
           className="timeline-section"
           action={<button onClick={() => {
             const note = window.prompt("Quick note");
@@ -1916,9 +1950,9 @@ function ContactDetail({
             {timeline.map((item) => (
               <div key={item.id} className="timeline-item">
                 <i style={{ background: TEAM_MEMBERS[item.userId].color }} />
-                <span className="timeline-icon">{item.type === "voice" ? <Mic /> : item.type === "call" ? <Phone /> : item.type === "email" ? <Mail /> : item.type === "document" ? <FileText /> : <Activity />}</span>
+                <span className="timeline-icon">{interactionIcon(item.type)}</span>
                 <span className="timeline-copy">
-                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{item.type.replaceAll("_", " ")}</em><small>{prettyDate(item.at, true)}</small></span>
+                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{interactionLabel(item.type)}</em><small>{prettyDate(item.at, true)}</small></span>
                   <p>{item.summary}</p>
                   {item.transcript && item.transcript !== item.summary ? <details><summary>Full transcript</summary><p>{item.transcript}</p></details> : null}
                 </span>
