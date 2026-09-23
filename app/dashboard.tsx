@@ -565,9 +565,9 @@ export function Dashboard() {
     patchContact(
       selected.id,
       { nextAction: "", nextActionDue: null },
-      makeInteraction(member, "task", "Completed next action: " + selected.nextAction),
+      makeInteraction(member, "task", "Marked next action complete: " + selected.nextAction),
     );
-    toast.success("Next action completed");
+    toast.success("Action marked complete", { description: "The completed action is now visible in What’s happening now." });
   };
 
   const addDocumentLink = () => {
@@ -648,14 +648,60 @@ export function Dashboard() {
       return;
     }
     const touch = kind === "email3" ? 3 : kind === "email10" ? 10 : 0;
-    const draft = draftEmail(selected, touch);
+    const strategy: EmailStrategy = touch === 3 ? "followup_3" : touch === 10 ? "breakup_10" : "smart";
+    const draft = draftEmail(selected, touch, strategy, "", 0);
     setGenerated({
       title: (touch ? "Follow-up Day " + touch : "Email") + " — " + selected.name,
       content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
       type: "email",
       subject: draft.subject,
       emailBody: draft.body,
+      emailStrategy: strategy,
+      emailInstruction: "",
+      emailVariant: 0,
     });
+  };
+
+  const openEmailComposer = () => {
+    if (!selected) return;
+    setEmailStrategy(selected.pipeline === "capital" ? "capital_qualify" : "smart");
+    setEmailInstruction("");
+    setEmailVariant(0);
+    setEmailComposerOpen(true);
+  };
+
+  const generateComposerEmail = () => {
+    if (!selected) return;
+    const touch: 0 | 3 | 10 = emailStrategy === "followup_3" ? 3 : emailStrategy === "breakup_10" ? 10 : 0;
+    const draft = draftEmail(selected, touch, emailStrategy, emailInstruction, emailVariant);
+    const label = EMAIL_STRATEGIES.find((item) => item.id === emailStrategy)?.label || "Email";
+    setGenerated({
+      title: label + " — " + selected.name,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      type: "email",
+      subject: draft.subject,
+      emailBody: draft.body,
+      emailStrategy,
+      emailInstruction,
+      emailVariant,
+    });
+    setEmailComposerOpen(false);
+  };
+
+  const recraftGeneratedEmail = () => {
+    if (!selected || !generated || generated.type !== "email") return;
+    const strategy = generated.emailStrategy || "smart";
+    const nextVariant = (generated.emailVariant || 0) + 1;
+    const touch: 0 | 3 | 10 = strategy === "followup_3" ? 3 : strategy === "breakup_10" ? 10 : 0;
+    const draft = draftEmail(selected, touch, strategy, generated.emailInstruction || "", nextVariant);
+    setGenerated({
+      ...generated,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      subject: draft.subject,
+      emailBody: draft.body,
+      emailVariant: nextVariant,
+    });
+    toast.success("Recrafted", { description: "Generated a different version using the same strategy." });
   };
 
   const saveGenerated = () => {
@@ -785,7 +831,7 @@ export function Dashboard() {
     patchContact(selected.id, {}, makeInteraction(member, "voice", summary, voiceText.trim()));
     setVoiceOpen(false);
     setVoiceText("");
-    toast.success("Voice note logged", { description: "It is now part of the relationship timeline." });
+    toast.success("Voice note logged", { description: "It now appears at the top of What’s happening now." });
   };
 
   const createQuickContact = () => {
@@ -910,6 +956,19 @@ export function Dashboard() {
       interactions: [...item.interactions, makeInteraction(member, "document", "Created Day " + touch + " outreach follow-up draft.")],
     }));
     toast.success("Day " + touch + " draft added to Outreach");
+  };
+
+  const removeQueuedEmailDraft = (contactId: string, documentId: string) => {
+    const contact = contacts.find((item) => item.id === contactId);
+    const document = contact?.documents.find((item) => item.id === documentId);
+    if (!contact || !document || document.sentAt) return;
+    if (!window.confirm("Remove this draft from Outreach? The contact and sent history will stay intact.")) return;
+    mutateContact(contactId, (item) => ({
+      ...item,
+      documents: item.documents.filter((entry) => entry.id !== documentId),
+      interactions: [...item.interactions, makeInteraction(member, "document", "Removed unsent outreach draft: " + document.title + ".")],
+    }));
+    toast.success("Draft removed from Outreach");
   };
 
   const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
