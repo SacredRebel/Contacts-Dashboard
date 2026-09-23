@@ -89,7 +89,7 @@ import {
   type TeamMemberId,
 } from "@/lib/relationship-types";
 
-type View = "home" | "contacts" | "capital" | "outreach" | "tasks" | "documents" | "network" | "activity";
+type View = "home" | "contacts" | "capital" | "outreach" | "sent" | "tasks" | "documents" | "network" | "activity" | "settings";
 type ThemeMode = "light" | "dark";
 type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
@@ -169,6 +169,12 @@ function isOverdue(value?: string | null) {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   return due < start;
+}
+
+function isWithinDays(value: string | null | undefined, days: number) {
+  if (!value) return false;
+  const age = Date.now() - new Date(value).getTime();
+  return age >= 0 && age <= days * 86_400_000;
 }
 
 function validPhone(value: string) {
@@ -948,31 +954,45 @@ export function Dashboard() {
     setSelectedId(filtered[nextIndex].id);
   };
 
-  const nav = [
-    { id: "home" as const, label: "Today", icon: <Home /> },
-    { id: "contacts" as const, label: "Contacts", icon: <Users /> },
-    { id: "capital" as const, label: "Capital", icon: <CircleDollarSign /> },
-    { id: "outreach" as const, label: "Outreach", icon: <Mail /> },
-    { id: "tasks" as const, label: "Tasks", icon: <ListTodo /> },
-    { id: "documents" as const, label: "Documents", icon: <FileText /> },
-    { id: "network" as const, label: "Network", icon: <Network /> },
-    { id: "activity" as const, label: "Activity", icon: <Activity /> },
+  const navGroups: { label: string; items: { id: View; label: string; icon: ReactNode }[] }[] = [
+    { label: "Workspace", items: [
+      { id: "home", label: "Home", icon: <Home /> },
+    ]},
+    { label: "Relationships", items: [
+      { id: "contacts", label: "Contacts", icon: <Users /> },
+      { id: "capital", label: "Capital", icon: <CircleDollarSign /> },
+    ]},
+    { label: "Communication", items: [
+      { id: "outreach", label: "Outreach", icon: <Mail /> },
+      { id: "sent", label: "Sent", icon: <CheckCircle2 /> },
+    ]},
+    { label: "Operations", items: [
+      { id: "tasks", label: "Tasks", icon: <ListTodo /> },
+      { id: "documents", label: "Documents", icon: <FileText /> },
+    ]},
+    { label: "Intelligence", items: [
+      { id: "network", label: "Network", icon: <Network /> },
+      { id: "activity", label: "Activity", icon: <Activity /> },
+    ]},
   ];
   const viewMeta: Record<View, { kicker: string; title: string; subtitle: string; icon: ReactNode }> = {
-    home: { kicker: "DAILY OPERATING VIEW", title: "Today", subtitle: "What needs attention, what changed, and what should move next.", icon: <Home /> },
+    home: { kicker: "WORKSPACE HOME", title: "Home", subtitle: "Your relationship command center, shortcuts and highest-priority work.", icon: <Home /> },
     contacts: { kicker: "RELATIONSHIP DIRECTORY", title: "Contacts", subtitle: "People, companies, context, next actions and complete relationship history.", icon: <Users /> },
     capital: { kicker: "CAPITAL INTELLIGENCE", title: "Capital", subtitle: "Qualify counterparties, protect disclosure, and move serious opportunities forward.", icon: <CircleDollarSign /> },
-    outreach: { kicker: "COMMUNICATION PIPELINE", title: "Outreach", subtitle: "Draft, review, approve, send and follow up without losing relationship context.", icon: <Mail /> },
+    outreach: { kicker: "COMMUNICATION PIPELINE", title: "Outreach", subtitle: "Draft, review, approve and prepare every outbound communication.", icon: <Mail /> },
+    sent: { kicker: "SENT COMMUNICATION", title: "Sent", subtitle: "A dedicated history of what was sent, to whom, when, and from which relationship.", icon: <CheckCircle2 /> },
     tasks: { kicker: "EXECUTION QUEUE", title: "Tasks", subtitle: "Everything promised, assigned, due and waiting across the relationship network.", icon: <ListTodo /> },
     documents: { kicker: "KNOWLEDGE & FILES", title: "Documents", subtitle: "Proposals, teasers, briefs, diligence files and relationship-specific assets.", icon: <FileText /> },
     network: { kicker: "RELATIONSHIP GRAPH", title: "Network", subtitle: "See introductions, representation paths, companies and people as one connected system.", icon: <Network /> },
     activity: { kicker: "TEAM HISTORY", title: "Activity", subtitle: "A chronological record of calls, notes, emails, documents, tasks and status changes.", icon: <Activity /> },
+    settings: { kicker: "WORKSPACE CONTROL", title: "Settings", subtitle: "Team identity, appearance, workspace data, backup and operating preferences.", icon: <Settings /> },
   };
   const currentMeta = viewMeta[view];
 
   return (
     <div className={"relationship-app " + (shellMode === "desktop" ? "desktop-shell" : "mobile-shell")} data-theme={theme} data-view={view}>
       <Toaster richColors position="bottom-right" />
+      <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <div className="brand-mark">R</div>
@@ -984,18 +1004,24 @@ export function Dashboard() {
         </div>
 
         <nav className="main-nav">
-          {nav.map((item) => (
-            <button
-              key={item.id}
-              className={view === item.id ? "active" : ""}
-              title={item.label}
-              aria-label={item.label}
-              onClick={() => { setView(item.id); setMenuOpen(false); }}
-            >
-              {item.icon}<span>{item.label}</span>
-              {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
-              {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
-            </button>
+          {navGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <span className="nav-group-label">{group.label}</span>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  className={view === item.id ? "active" : ""}
+                  title={item.label}
+                  aria-label={item.label}
+                  onClick={() => { setView(item.id); setMenuOpen(false); }}
+                >
+                  {item.icon}<span>{item.label}</span>
+                  {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
+                  {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
+                  {item.id === "sent" && sentEmails.length > 0 ? <em>{sentEmails.length}</em> : null}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -1010,8 +1036,12 @@ export function Dashboard() {
           ))}
         </div>
 
-        <button className="settings-button" onClick={() => setSettingsOpen(true)}>
-          <Settings /> Settings & backup
+        <button className={view === "settings" ? "settings-button active" : "settings-button"} onClick={() => {
+          if (shellMode === "desktop") setView("settings");
+          else setSettingsOpen(true);
+          setMenuOpen(false);
+        }}>
+          <Settings /> <span>Settings</span>
         </button>
       </aside>
 
@@ -1154,6 +1184,10 @@ export function Dashboard() {
             />
           ) : null}
 
+          {view === "sent" ? (
+            <SentView rows={sentEmails} onOpen={openContact} />
+          ) : null}
+
           {view === "tasks" ? (
             <TasksView tasks={openTasks} member={member} onOpen={openContact} onComplete={completeTask} />
           ) : null}
@@ -1168,6 +1202,19 @@ export function Dashboard() {
 
           {view === "activity" ? (
             <ActivityView rows={allActivity} onOpen={openContact} />
+          ) : null}
+
+          {view === "settings" ? (
+            <SettingsView
+              contacts={contacts}
+              member={member}
+              theme={theme}
+              onChooseUser={chooseUser}
+              onToggleTheme={toggleTheme}
+              onExportJson={() => exportWorkspace(contacts)}
+              onExportCsv={() => exportContactsCsv(contacts)}
+              onImport={() => importRef.current?.click()}
+            />
           ) : null}
         </main>
       </div>
@@ -1296,7 +1343,6 @@ export function Dashboard() {
             <section className="settings-section">
               <h3>Local backup / portability</h3>
               <p>This version intentionally skips a shared backend. JSON is the complete restorable workspace; CSV is a portable contact / pipeline export for review, spreadsheets or handoff.</p>
-              <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
               <div className="button-row">
                 <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export JSON backup</button>
                 <button className="secondary" onClick={() => exportContactsCsv(contacts)}><Download /> Export contacts CSV</button>
@@ -1371,6 +1417,22 @@ function HomeView({
         <button onClick={() => onGo("tasks")} className={metrics.due ? "urgent" : ""}><span className="kpi-icon warm"><Clock3 /></span><span><small>Needs attention</small><strong>{metrics.due}</strong><em>Due / overdue</em></span></button>
         <button onClick={() => onGo("capital")}><span className="kpi-icon green"><Landmark /></span><span><small>Capital network</small><strong>{metrics.capital}</strong><em>{metrics.qualified} qualified / active</em></span></button>
         <button onClick={() => onGo("contacts")}><span className="kpi-icon blue"><BriefcaseBusiness /></span><span><small>Project network</small><strong>{metrics.architects + metrics.contractors}</strong><em>{metrics.architects} architects · {metrics.contractors} builders</em></span></button>
+      </section>
+
+      <section className="workspace-launcher">
+        <div className="workspace-launcher-head">
+          <div><span>WORKSPACE</span><strong>Jump into a page</strong><small>Every area has one job. Open the page you need instead of digging through one giant screen.</small></div>
+        </div>
+        <div className="workspace-launcher-grid">
+          <button className="launch-contacts" onClick={() => onGo("contacts")}><span><Users /></span><strong>Contacts</strong><small>People, companies, context and next actions</small><em>{metrics.total}</em></button>
+          <button className="launch-capital" onClick={() => onGo("capital")}><span><CircleDollarSign /></span><strong>Capital</strong><small>Qualification, directness and disclosure</small><em>{metrics.capital}</em></button>
+          <button className="launch-outreach" onClick={() => onGo("outreach")}><span><Mail /></span><strong>Outreach</strong><small>Draft, approve and prepare messages</small><ArrowUpRight /></button>
+          <button className="launch-sent" onClick={() => onGo("sent")}><span><CheckCircle2 /></span><strong>Sent</strong><small>Communication history and sent record</small><ArrowUpRight /></button>
+          <button className="launch-tasks" onClick={() => onGo("tasks")}><span><ListTodo /></span><strong>Tasks</strong><small>Assignments, due dates and handoffs</small><em>{metrics.due}</em></button>
+          <button className="launch-documents" onClick={() => onGo("documents")}><span><FileText /></span><strong>Documents</strong><small>Proposals, briefs, diligence and files</small><ArrowUpRight /></button>
+          <button className="launch-network" onClick={() => onGo("network")}><span><Network /></span><strong>Network</strong><small>Introductions and relationship paths</small><ArrowUpRight /></button>
+          <button className="launch-activity" onClick={() => onGo("activity")}><span><Activity /></span><strong>Activity</strong><small>Team history and chronological changes</small><ArrowUpRight /></button>
+        </div>
       </section>
 
       <div className="dashboard-main-grid">
@@ -1906,6 +1968,134 @@ function OutreachView({
             </div>
           </section>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+function SentView({
+  rows,
+  onOpen,
+}: {
+  rows: { contact: RelationshipContact; document: ContactDocument }[];
+  onOpen: (contact: RelationshipContact) => void;
+}) {
+  const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
+  const [search, setSearch] = useState("");
+  const needle = search.trim().toLowerCase();
+  const visible = rows.filter(({ contact, document }) => {
+    const parts = emailDocumentParts(document);
+    return (pipeline === "all" || contact.pipeline === pipeline) &&
+      (!needle || [contact.name, contact.organization, contact.email, parts.subject, parts.body].join(" ").toLowerCase().includes(needle));
+  });
+  const last7 = visible.filter(({ document }) => isWithinDays(document.sentAt, 7)).length;
+  const day0 = visible.filter(({ document }) => emailTouch(document) === 0).length;
+  const followups = visible.length - day0;
+
+  return (
+    <div className="page-view sent-page">
+      <PageHero icon={<CheckCircle2 />} eyebrow="COMMUNICATION HISTORY" title="Sent" text="A dedicated record of what left the system, who received it, when it was sent, and which relationship it belongs to." />
+      <section className="sent-summary-grid">
+        <div><span>Total sent</span><strong>{visible.length}</strong><small>matching current filters</small></div>
+        <div><span>Last 7 days</span><strong>{last7}</strong><small>recent outbound messages</small></div>
+        <div><span>Initial outreach</span><strong>{day0}</strong><small>Day 0 messages</small></div>
+        <div><span>Follow-ups</span><strong>{followups}</strong><small>Day 3 / Day 10</small></div>
+      </section>
+      <div className="page-filterbar sent-filterbar">
+        <div className="search-input"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sent email, contact, subject…" /></div>
+        <select value={pipeline} onChange={(e) => setPipeline(e.target.value as Pipeline | "all")}>
+          <option value="all">All pipelines</option>
+          {PIPELINES.map((item) => <option key={item} value={item}>{PIPELINE_LABELS[item]}</option>)}
+        </select>
+        <span><strong>{visible.length}</strong> sent</span>
+      </div>
+      <section className="sent-history-card">
+        <div className="sent-history-head"><span>Recipient</span><span>Message</span><span>Touch</span><span>Sent</span></div>
+        {visible.map(({ contact, document }) => {
+          const parts = emailDocumentParts(document);
+          return (
+            <button key={document.id} className="sent-history-row" onClick={() => onOpen(contact)}>
+              <span className="sent-person"><span className={"pipeline-avatar mini " + contact.pipeline}>{initials(contact.name)}</span><span><strong>{contact.name}</strong><small>{contact.organization}<br />{contact.email || "No email"}</small></span></span>
+              <span className="sent-message"><strong>{parts.subject || document.title}</strong><small>{parts.body.slice(0,120)}{parts.body.length > 120 ? "…" : ""}</small></span>
+              <span><em className="sent-touch">Day {emailTouch(document)}</em></span>
+              <span className="sent-date">{document.sentAt ? prettyDate(document.sentAt, true) : "Unknown"}</span>
+            </button>
+          );
+        })}
+        {!visible.length ? <EmptyMini icon={<Mail />} title="No sent messages match" text="Change the search or pipeline filter." /> : null}
+      </section>
+    </div>
+  );
+}
+
+function SettingsView({
+  contacts,
+  member,
+  theme,
+  onChooseUser,
+  onToggleTheme,
+  onExportJson,
+  onExportCsv,
+  onImport,
+}: {
+  contacts: RelationshipContact[];
+  member: TeamMemberId;
+  theme: ThemeMode;
+  onChooseUser: (id: TeamMemberId) => void;
+  onToggleTheme: () => void;
+  onExportJson: () => void;
+  onExportCsv: () => void;
+  onImport: () => void;
+}) {
+  return (
+    <div className="page-view settings-page">
+      <PageHero icon={<Settings />} eyebrow="WORKSPACE CONTROL" title="Settings" text="Control identity, appearance, data portability and the behavior of this local Relationship OS workspace." />
+      <div className="settings-page-grid">
+        <section className="settings-card team-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Users /></span><div><strong>Team identity</strong><small>Choose who is currently operating the workspace. Every action keeps that person’s color attribution.</small></div></div>
+          <div className="settings-member-grid">
+            {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
+              <button key={id} className={member === id ? "active" : ""} onClick={() => onChooseUser(id)}>
+                <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Full workspace access</small></span>
+                {member === id ? <CheckCircle2 /> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="settings-card appearance-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Sun /></span><div><strong>Appearance</strong><small>Switch the whole application between the bright workspace and dark workspace themes.</small></div></div>
+          <button className="theme-setting-button" onClick={onToggleTheme}>
+            <span className="theme-preview">{theme === "light" ? <Moon /> : <Sun />}</span>
+            <span><strong>{theme === "light" ? "Switch to dark mode" : "Switch to light mode"}</strong><small>Current theme: {theme}</small></span>
+            <ChevronRight />
+          </button>
+        </section>
+
+        <section className="settings-card data-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><Download /></span><div><strong>Workspace data</strong><small>Back up, export or restore this local workspace. JSON preserves the complete Relationship OS state.</small></div></div>
+          <div className="settings-data-stats">
+            <div><strong>{contacts.length}</strong><span>contacts</span></div>
+            <div><strong>{contacts.reduce((sum,c) => sum + c.documents.length,0)}</strong><span>documents</span></div>
+            <div><strong>{contacts.reduce((sum,c) => sum + c.interactions.length,0)}</strong><span>interactions</span></div>
+          </div>
+          <div className="settings-action-list">
+            <button onClick={onExportJson}><span><Download /></span><span><strong>Export full JSON backup</strong><small>Complete restorable workspace</small></span><ChevronRight /></button>
+            <button onClick={onExportCsv}><span><FileText /></span><span><strong>Export contacts CSV</strong><small>Portable contact and pipeline table</small></span><ChevronRight /></button>
+            <button onClick={onImport}><span><Upload /></span><span><strong>Import JSON backup</strong><small>Restore a previously exported workspace</small></span><ChevronRight /></button>
+          </div>
+        </section>
+
+        <section className="settings-card system-settings-card">
+          <div className="settings-card-head"><span className="settings-card-icon"><ShieldCheck /></span><div><strong>Operating rules</strong><small>The system is intentionally human-controlled. Sensitive decisions are never silently automated.</small></div></div>
+          <div className="settings-rule-list">
+            <div><CheckCircle2 /><span><strong>Human approval</strong><small>Email, disclosure and capital qualification remain explicit actions.</small></span></div>
+            <div><ShieldCheck /><span><strong>Local-first workspace</strong><small>No shared backend is enabled in this build.</small></span></div>
+            <div><Activity /><span><strong>Auditable history</strong><small>Meaningful relationship changes stay tied to people and timestamps.</small></span></div>
+          </div>
+        </section>
       </div>
     </div>
   );
