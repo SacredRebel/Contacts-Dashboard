@@ -89,7 +89,7 @@ import {
   type TeamMemberId,
 } from "@/lib/relationship-types";
 
-type View = "home" | "contacts" | "capital" | "outreach" | "tasks" | "documents" | "network" | "activity";
+type View = "home" | "contacts" | "capital" | "outreach" | "sent" | "tasks" | "documents" | "network" | "activity" | "settings";
 type ThemeMode = "light" | "dark";
 type QueueFilter = "all" | "due_today" | "overdue" | "assigned_to_me" | "high_priority" | "direct_capital" | "intermediary" | "dormant";
 type GeneratedKind = "handoff" | "call" | "proposal" | "email0" | "email3" | "email10" | "meeting" | "diligence" | "teaser" | "info";
@@ -948,31 +948,47 @@ export function Dashboard() {
     setSelectedId(filtered[nextIndex].id);
   };
 
-  const nav = [
-    { id: "home" as const, label: "Today", icon: <Home /> },
-    { id: "contacts" as const, label: "Contacts", icon: <Users /> },
-    { id: "capital" as const, label: "Capital", icon: <CircleDollarSign /> },
-    { id: "outreach" as const, label: "Outreach", icon: <Mail /> },
-    { id: "tasks" as const, label: "Tasks", icon: <ListTodo /> },
-    { id: "documents" as const, label: "Documents", icon: <FileText /> },
-    { id: "network" as const, label: "Network", icon: <Network /> },
-    { id: "activity" as const, label: "Activity", icon: <Activity /> },
+  const navGroups: { label: string; items: { id: View; label: string; icon: ReactNode }[] }[] = [
+    { label: "Workspace", items: [
+      { id: "home", label: "Home", icon: <Home /> },
+    ]},
+    { label: "Relationships", items: [
+      { id: "contacts", label: "Contacts", icon: <Users /> },
+      { id: "capital", label: "Capital", icon: <CircleDollarSign /> },
+    ]},
+    { label: "Communication", items: [
+      { id: "outreach", label: "Outreach", icon: <Mail /> },
+      { id: "sent", label: "Sent", icon: <CheckCircle2 /> },
+    ]},
+    { label: "Operations", items: [
+      { id: "tasks", label: "Tasks", icon: <ListTodo /> },
+      { id: "documents", label: "Documents", icon: <FileText /> },
+    ]},
+    { label: "Intelligence", items: [
+      { id: "network", label: "Network", icon: <Network /> },
+      { id: "activity", label: "Activity", icon: <Activity /> },
+    ]},
   ];
+  const nav = navGroups.flatMap((group) => group.items);
+
   const viewMeta: Record<View, { kicker: string; title: string; subtitle: string; icon: ReactNode }> = {
-    home: { kicker: "DAILY OPERATING VIEW", title: "Today", subtitle: "What needs attention, what changed, and what should move next.", icon: <Home /> },
+    home: { kicker: "WORKSPACE HOME", title: "Home", subtitle: "Your relationship command center, shortcuts and highest-priority work.", icon: <Home /> },
     contacts: { kicker: "RELATIONSHIP DIRECTORY", title: "Contacts", subtitle: "People, companies, context, next actions and complete relationship history.", icon: <Users /> },
     capital: { kicker: "CAPITAL INTELLIGENCE", title: "Capital", subtitle: "Qualify counterparties, protect disclosure, and move serious opportunities forward.", icon: <CircleDollarSign /> },
-    outreach: { kicker: "COMMUNICATION PIPELINE", title: "Outreach", subtitle: "Draft, review, approve, send and follow up without losing relationship context.", icon: <Mail /> },
+    outreach: { kicker: "COMMUNICATION PIPELINE", title: "Outreach", subtitle: "Draft, review, approve and prepare every outbound communication.", icon: <Mail /> },
+    sent: { kicker: "SENT COMMUNICATION", title: "Sent", subtitle: "A dedicated history of what was sent, to whom, when, and from which relationship.", icon: <CheckCircle2 /> },
     tasks: { kicker: "EXECUTION QUEUE", title: "Tasks", subtitle: "Everything promised, assigned, due and waiting across the relationship network.", icon: <ListTodo /> },
     documents: { kicker: "KNOWLEDGE & FILES", title: "Documents", subtitle: "Proposals, teasers, briefs, diligence files and relationship-specific assets.", icon: <FileText /> },
     network: { kicker: "RELATIONSHIP GRAPH", title: "Network", subtitle: "See introductions, representation paths, companies and people as one connected system.", icon: <Network /> },
     activity: { kicker: "TEAM HISTORY", title: "Activity", subtitle: "A chronological record of calls, notes, emails, documents, tasks and status changes.", icon: <Activity /> },
+    settings: { kicker: "WORKSPACE CONTROL", title: "Settings", subtitle: "Team identity, appearance, workspace data, backup and operating preferences.", icon: <Settings /> },
   };
   const currentMeta = viewMeta[view];
 
   return (
     <div className={"relationship-app " + (shellMode === "desktop" ? "desktop-shell" : "mobile-shell")} data-theme={theme} data-view={view}>
       <Toaster richColors position="bottom-right" />
+      <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <div className="brand-mark">R</div>
@@ -984,18 +1000,24 @@ export function Dashboard() {
         </div>
 
         <nav className="main-nav">
-          {nav.map((item) => (
-            <button
-              key={item.id}
-              className={view === item.id ? "active" : ""}
-              title={item.label}
-              aria-label={item.label}
-              onClick={() => { setView(item.id); setMenuOpen(false); }}
-            >
-              {item.icon}<span>{item.label}</span>
-              {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
-              {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
-            </button>
+          {navGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <span className="nav-group-label">{group.label}</span>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  className={view === item.id ? "active" : ""}
+                  title={item.label}
+                  aria-label={item.label}
+                  onClick={() => { setView(item.id); setMenuOpen(false); }}
+                >
+                  {item.icon}<span>{item.label}</span>
+                  {item.id === "tasks" && metrics.due > 0 ? <em>{metrics.due}</em> : null}
+                  {item.id === "outreach" && queuedEmails.length > 0 ? <em>{queuedEmails.length}</em> : null}
+                  {item.id === "sent" && sentEmails.length > 0 ? <em>{sentEmails.length}</em> : null}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -1010,8 +1032,12 @@ export function Dashboard() {
           ))}
         </div>
 
-        <button className="settings-button" onClick={() => setSettingsOpen(true)}>
-          <Settings /> Settings & backup
+        <button className={view === "settings" ? "settings-button active" : "settings-button"} onClick={() => {
+          if (shellMode === "desktop") setView("settings");
+          else setSettingsOpen(true);
+          setMenuOpen(false);
+        }}>
+          <Settings /> <span>Settings</span>
         </button>
       </aside>
 
@@ -1154,6 +1180,10 @@ export function Dashboard() {
             />
           ) : null}
 
+          {view === "sent" ? (
+            <SentView rows={sentEmails} onOpen={openContact} />
+          ) : null}
+
           {view === "tasks" ? (
             <TasksView tasks={openTasks} member={member} onOpen={openContact} onComplete={completeTask} />
           ) : null}
@@ -1168,6 +1198,19 @@ export function Dashboard() {
 
           {view === "activity" ? (
             <ActivityView rows={allActivity} onOpen={openContact} />
+          ) : null}
+
+          {view === "settings" ? (
+            <SettingsView
+              contacts={contacts}
+              member={member}
+              theme={theme}
+              onChooseUser={chooseUser}
+              onToggleTheme={toggleTheme}
+              onExportJson={() => exportWorkspace(contacts)}
+              onExportCsv={() => exportContactsCsv(contacts)}
+              onImport={() => importRef.current?.click()}
+            />
           ) : null}
         </main>
       </div>
@@ -1296,7 +1339,6 @@ export function Dashboard() {
             <section className="settings-section">
               <h3>Local backup / portability</h3>
               <p>This version intentionally skips a shared backend. JSON is the complete restorable workspace; CSV is a portable contact / pipeline export for review, spreadsheets or handoff.</p>
-              <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
               <div className="button-row">
                 <button className="secondary" onClick={() => exportWorkspace(contacts)}><Download /> Export JSON backup</button>
                 <button className="secondary" onClick={() => exportContactsCsv(contacts)}><Download /> Export contacts CSV</button>
