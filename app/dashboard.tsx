@@ -1324,55 +1324,91 @@ function HomeView({
   const recent = changed.slice(0, 7);
 
   return (
-    <div className="home-view">
-      <section className="hero-card">
-        <div>
-          <span>DAILY OPERATING VIEW</span>
-          <h1>Who needs attention next?</h1>
-          <p>One shared relationship brain for Paul, Mark and Jonathan. Calls, notes, tasks, documents and capital verification stay attached to the person.</p>
+    <div className="home-view dashboard-v2">
+      <section className="dashboard-intro">
+        <div className="dashboard-intro-copy">
+          <span>RELATIONSHIP OS</span>
+          <h1>Today’s command center</h1>
+          <p>See what needs attention, move relationships forward, and keep every call, document and follow-up attached to the right person.</p>
         </div>
-        <div className="hero-number"><strong>{metrics.total}</strong><span>live contacts</span></div>
+        <div className="dashboard-intro-actions">
+          <button className="dashboard-secondary" onClick={() => onGo("contacts")}><Users /> Browse network</button>
+          <button className="dashboard-primary" onClick={() => onGo("tasks")}><ListTodo /> Open tasks</button>
+        </div>
       </section>
 
-      <div className="metric-grid">
-        <button onClick={() => onGo("capital")}><Landmark /><span><strong>{metrics.capital}</strong>Capital</span></button>
-        <button onClick={() => onGo("contacts")}><Ruler /><span><strong>{metrics.architects}</strong>Architects</span></button>
-        <button onClick={() => onGo("contacts")}><HardHat /><span><strong>{metrics.contractors}</strong>Contractors</span></button>
-        <button onClick={() => onGo("tasks")} className={metrics.due ? "attention" : ""}><Clock3 /><span><strong>{metrics.due}</strong>Due now</span></button>
-        <button onClick={() => onGo("capital")}><ShieldCheck /><span><strong>{metrics.qualified}</strong>Qualified / active</span></button>
-      </div>
+      <section className="dashboard-kpis">
+        <button onClick={() => onGo("contacts")}><span className="kpi-icon neutral"><Users /></span><span><small>Relationship network</small><strong>{metrics.total}</strong><em>Total contacts</em></span></button>
+        <button onClick={() => onGo("tasks")} className={metrics.due ? "urgent" : ""}><span className="kpi-icon warm"><Clock3 /></span><span><small>Needs attention</small><strong>{metrics.due}</strong><em>Due / overdue</em></span></button>
+        <button onClick={() => onGo("capital")}><span className="kpi-icon green"><Landmark /></span><span><small>Capital network</small><strong>{metrics.capital}</strong><em>{metrics.qualified} qualified / active</em></span></button>
+        <button onClick={() => onGo("contacts")}><span className="kpi-icon blue"><BriefcaseBusiness /></span><span><small>Project network</small><strong>{metrics.architects + metrics.contractors}</strong><em>{metrics.architects} architects · {metrics.contractors} builders</em></span></button>
+      </section>
 
-      <div className="home-grid">
-        <section className="home-card">
-          <div className="card-head"><div><CalendarClock /><span><strong>Due / overdue</strong><small>Do these next</small></span></div><button onClick={() => onGo("tasks")}>All tasks <ArrowUpRight /></button></div>
-          <div className="action-list">
+      <div className="dashboard-main-grid">
+        <section className="dashboard-panel priority-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><CalendarClock /></span><span><strong>Priority queue</strong><small>What should move next</small></span></div>
+            <button onClick={() => onGo("tasks")}>View all <ArrowUpRight /></button>
+          </div>
+          <div className="priority-list">
             {due.length ? due.map(({ contact, task }) => (
-              <div key={task.id} className="action-item">
-                <button className="action-copy" onClick={() => onOpen(contact)}>
-                  <span className={"pipeline-dot " + contact.pipeline}>{pipelineIcon(contact.pipeline)}</span>
-                  <span><strong>{task.title}</strong><small>{contact.name} · {contact.organization} · {task.dueAt ? compactDate(task.dueAt) : "No date"}</small></span>
+              <div key={task.id} className="priority-row">
+                <button className="priority-person" onClick={() => onOpen(contact)}>
+                  <span className={"pipeline-avatar " + contact.pipeline}>{initials(contact.name || contact.organization)}</span>
+                  <span className="priority-copy">
+                    <strong>{task.title}</strong>
+                    <small>{contact.name} · {contact.organization}</small>
+                  </span>
                 </button>
+                <span className={isOverdue(task.dueAt) ? "due-chip overdue" : "due-chip"}>{task.dueAt ? compactDate(task.dueAt) : "No date"}</span>
                 <button className="complete-circle" onClick={() => onCompleteTask(contact.id, task.id)} title="Complete"><Check /></button>
               </div>
             )) : <EmptyMini icon={<CheckCircle2 />} title="Nothing urgent" text="No dated tasks are due today." />}
           </div>
         </section>
 
-        <section className="home-card">
-          <div className="card-head"><div><Activity /><span><strong>What changed?</strong><small>Since your last visit</small></span></div><button onClick={() => onGo("activity")}>Activity <ArrowUpRight /></button></div>
-          <div className="change-list">
+        <section className="dashboard-panel network-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><BriefcaseBusiness /></span><span><strong>Network overview</strong><small>Current composition</small></span></div>
+          </div>
+          <div className="network-stat-stack">
+            {([
+              ["capital", metrics.capital, metrics.total],
+              ["architect", metrics.architects, metrics.total],
+              ["contractor", metrics.contractors, metrics.total],
+            ] as [Pipeline, number, number][]).map(([pipeline, count, total]) => (
+              <button key={pipeline} onClick={() => onGo(pipeline === "capital" ? "capital" : "contacts")}>
+                <span className={"network-stat-icon " + pipeline}>{pipelineIcon(pipeline)}</span>
+                <span className="network-stat-copy"><strong>{PIPELINE_LABELS[pipeline]}</strong><small>{count} contacts</small></span>
+                <span className="network-stat-percent">{total > 0 ? Math.round((count / total) * 100) : 0}%</span>
+              </button>
+            ))}
+          </div>
+          <button className="network-open" onClick={() => onGo("network")}><Network /> Open relationship graph <ArrowUpRight /></button>
+        </section>
+
+        <section className="dashboard-panel activity-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><Activity /></span><span><strong>Recent activity</strong><small>Since your last visit</small></span></div>
+            <button onClick={() => onGo("activity")}>All activity <ArrowUpRight /></button>
+          </div>
+          <div className="dashboard-activity-list">
             {recent.length ? recent.map((row) => (
               <button key={row.at + row.contact.id + row.summary} onClick={() => onOpen(row.contact)}>
                 <i style={{ background: row.userId ? TEAM_MEMBERS[row.userId].color : "#94a3b8" }} />
                 <span><strong>{row.summary}</strong><small>{row.contact.name} · {prettyDate(row.at, true)}</small></span>
+                <ChevronRight />
               </button>
             )) : <EmptyMini icon={<Activity />} title="No new logged changes" text="New calls, notes and tasks will show here." />}
           </div>
         </section>
 
-        <section className="home-card capital-watch">
-          <div className="card-head"><div><CircleDollarSign /><span><strong>Capital watch</strong><small>High-intent / verification</small></span></div><button onClick={() => onGo("capital")}>Capital <ArrowUpRight /></button></div>
-          <div className="capital-list">
+        <section className="dashboard-panel capital-focus-panel">
+          <div className="dashboard-panel-head">
+            <div><span className="panel-icon"><CircleDollarSign /></span><span><strong>Capital focus</strong><small>High-intent / verification</small></span></div>
+            <button onClick={() => onGo("capital")}>Open capital <ArrowUpRight /></button>
+          </div>
+          <div className="capital-focus-list">
             {highIntent.length ? highIntent.map((contact) => (
               <button key={contact.id} onClick={() => onOpen(contact)}>
                 <span className="avatar-small">{initials(contact.name)}</span>
@@ -1382,25 +1418,44 @@ function HomeView({
             )) : <EmptyMini icon={<ShieldCheck />} title="No high-intent capital yet" text="Replies and qualified contacts will surface here." />}
           </div>
         </section>
-
-        <section className="home-card pipeline-card">
-          <div className="card-head"><div><BriefcaseBusiness /><span><strong>Network composition</strong><small>216 researched contacts loaded</small></span></div></div>
-          <div className="pipeline-bars">
-            {([
-              ["capital", metrics.capital, metrics.total],
-              ["architect", metrics.architects, metrics.total],
-              ["contractor", metrics.contractors, metrics.total],
-            ] as [Pipeline, number, number][]).map(([pipeline, count, total]) => (
-              <div key={pipeline}>
-                <span><strong>{PIPELINE_LABELS[pipeline]}</strong><em>{count}</em></span>
-                <i><b className={pipeline} style={{ width: (total > 0 ? Math.max(2, (count / total) * 100) : 0) + "%" }} /></i>
-              </div>
-            ))}
-          </div>
-          <p>The working contact seed was migrated from the Notion Outreach Intelligence System: 62 capital, 68 architects and 86 contractors/builders.</p>
-        </section>
       </div>
     </div>
+  );
+}
+
+function DisclosureSection({
+  icon,
+  title,
+  subtitle,
+  defaultOpen = false,
+  className = "",
+  action,
+  badge,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  defaultOpen?: boolean;
+  className?: string;
+  action?: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className={"disclosure-section " + (open ? "open " : "") + className}>
+      <div className="disclosure-head">
+        <button className="disclosure-toggle" type="button" onClick={() => setOpen((value) => !value)}>
+          <span className="disclosure-icon">{icon}</span>
+          <span className="disclosure-copy"><strong>{title}</strong><small>{subtitle}</small></span>
+          {badge ? <span className="disclosure-badge">{badge}</span> : null}
+          <ChevronRight className="disclosure-chevron" />
+        </button>
+        {action ? <div className="disclosure-action">{action}</div> : null}
+      </div>
+      <div className="disclosure-body">{children}</div>
+    </section>
   );
 }
 
@@ -1467,8 +1522,12 @@ function ContactDetail({
           </div>
           <h1>{contact.name}</h1>
           <p>{contact.title || contact.category}{contact.organization ? " · " + contact.organization : ""}</p>
-          {contact.location ? <small><MapPin /> {contact.location}</small> : null}
-          {lastInteraction ? <small className="last-interaction"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
+          <div className="mobile-contact-meta">
+            {contact.location ? <span><MapPin /> {contact.location}</span> : null}
+            {lastInteraction ? <span><Activity /> {prettyDate(lastInteraction.at, true)}</span> : null}
+          </div>
+          {contact.location ? <small className="desktop-contact-meta"><MapPin /> {contact.location}</small> : null}
+          {lastInteraction ? <small className="last-interaction desktop-contact-meta"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
         </div>
         <div className="stage-control">
           <span>Relationship stage</span>
@@ -1482,16 +1541,17 @@ function ContactDetail({
         {phoneOk ? <a href={phoneHref(contact.phone)}><Phone /><span>Call</span></a> : <button disabled><Phone /><span>Call</span></button>}
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
-        <button onClick={onVoice}><Mic /><span>Voice note</span></button>
-        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft email</span></button>
+        <button onClick={onVoice}><Mic /><span>Voice</span></button>
+        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft</span></button>
         <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
       </div>
 
       <div className="detail-body">
         {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
-        <section className="next-action-card">
+
+        <section className="next-action-card focus-card">
           <div className="section-head">
-            <div><TargetIcon /><span><strong>Next best action</strong><small>The one thing nobody should have to guess</small></span></div>
+            <div><TargetIcon /><span><strong>Next best action</strong><small>Keep the next move obvious</small></span></div>
             <button onClick={onTask}><Plus /> Add task</button>
           </div>
           <div className="next-action-edit">
@@ -1501,11 +1561,12 @@ function ContactDetail({
           {primaryTask ? <div className="task-chip"><span style={{ background: TEAM_MEMBERS[primaryTask.assignedTo].color }}>{TEAM_MEMBERS[primaryTask.assignedTo].initials}</span><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
         </section>
 
-        <section>
-          <div className="section-head">
-            <div><UserRound /><span><strong>Relationship file</strong><small>Identity and direct actions</small></span></div>
-            {contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : null}
-          </div>
+        <DisclosureSection
+          icon={<UserRound />}
+          title="Relationship file"
+          subtitle="Identity, role and direct contact details"
+          action={contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : undefined}
+        >
           <div className="identity-grid">
             <Info label="Organization" value={contact.organization} icon={<Building2 />} />
             <Info label="Role" value={contact.title || contact.category} icon={<BriefcaseBusiness />} />
@@ -1514,10 +1575,13 @@ function ContactDetail({
             <Info label="Website" value={contact.website || "Not recorded"} icon={<ExternalLink />} href={contact.website || undefined} external />
             <Info label="Contact confidence" value={contact.emailConfidence || "Not recorded"} icon={<ShieldCheck />} />
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head"><div><Sparkles /><span><strong>Why this contact</strong><small>Public facts and professional fit</small></span></div></div>
+        <DisclosureSection
+          icon={<Sparkles />}
+          title="Why this contact"
+          subtitle="Public facts, fit and outreach context"
+        >
           <div className="context-card">
             <label>Public observation</label>
             <p>{contact.publicObservation || "No public observation saved yet."}</p>
@@ -1529,14 +1593,16 @@ function ContactDetail({
             <div><label>Warnings / framing</label><p>{contact.warnings || "No warning recorded."}</p></div>
           </div>
           {contact.alignmentTags.length ? <div className="tag-row">{contact.alignmentTags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
-        </section>
+        </DisclosureSection>
 
         {contact.pipeline === "capital" && contact.capital ? (
-          <section className="capital-panel">
-            <div className="section-head">
-              <div><ShieldCheck /><span><strong>Capital qualification</strong><small>Responsive does not mean qualified capital</small></span></div>
-              <em>{capitalBadge(contact.capital)}</em>
-            </div>
+          <DisclosureSection
+            icon={<ShieldCheck />}
+            title="Capital qualification"
+            subtitle="Counterparty, capacity and disclosure controls"
+            className="capital-panel"
+            badge={<em>{capitalBadge(contact.capital)}</em>}
+          >
             <div className="qualification-grid">
               <label><span>Capital type</span><input value={contact.capital.capitalType} onChange={(e) => patchCapital({ capitalType: e.target.value })} /></label>
               <label><span>Direct / intermediary</span><select value={contact.capital.directness} onChange={(e) => patchCapital({ directness: e.target.value })}>
@@ -1569,14 +1635,15 @@ function ContactDetail({
                 return <span key={label} className={active ? "active" : ""}>{i + 1}<em>{label}</em></span>;
               })}
             </div>
-          </section>
+          </DisclosureSection>
         ) : null}
 
-        <section>
-          <div className="section-head">
-            <div><FileText /><span><strong>Documents & actions</strong><small>Create, attach and preserve versions</small></span></div>
-            <button onClick={onDocument}><Paperclip /> Attach link</button>
-          </div>
+        <DisclosureSection
+          icon={<FileText />}
+          title="Documents & actions"
+          subtitle="Drafts, briefs, proposals and attached files"
+          action={<button onClick={onDocument}><Paperclip /> Attach</button>}
+        >
           <div className="document-actions-grid">
             <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>History, risks and next step</small></span></button>
             <button onClick={() => onGenerate("call")}><Phone /><span><strong>Call brief</strong><small>Context and unresolved questions</small></span></button>
@@ -1599,13 +1666,14 @@ function ContactDetail({
             ))}
             {!contact.documents.length ? <p className="empty-inline">No documents attached yet.</p> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head">
-            <div><Network /><span><strong>Connections</strong><small>Who introduced whom and how the network grows</small></span></div>
-            <button onClick={onConnection}><Plus /> Add connection</button>
-          </div>
+        <DisclosureSection
+          icon={<Network />}
+          title="Connections"
+          subtitle="Introductions, representation and referral paths"
+          action={<button onClick={onConnection}><Plus /> Add</button>}
+        >
           <div className="connection-list">
             {connected.map(({ connection, contact: linked }) => linked ? (
               <button key={connection.id} onClick={() => onSelect(linked.id)}>
@@ -1616,16 +1684,17 @@ function ContactDetail({
             ) : null)}
             {!connected.length ? <p className="empty-inline">No relationship links yet. Add introductions as they happen.</p> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head">
-            <div><Activity /><span><strong>Relationship timeline</strong><small>Calls, emails, voice notes, documents and decisions</small></span></div>
-            <button onClick={() => {
-              const note = window.prompt("Quick note");
-              if (note?.trim()) onLog("note", note.trim());
-            }}><Plus /> Note</button>
-          </div>
+        <DisclosureSection
+          icon={<Activity />}
+          title="Relationship timeline"
+          subtitle="Calls, emails, voice notes and decisions"
+          action={<button onClick={() => {
+            const note = window.prompt("Quick note");
+            if (note?.trim()) onLog("note", note.trim());
+          }}><Plus /> Note</button>}
+        >
           <div className="timeline">
             {timeline.map((item) => (
               <div key={item.id} className="timeline-item">
@@ -1640,16 +1709,20 @@ function ContactDetail({
             ))}
             {!timeline.length ? <div className="empty-timeline"><Activity /><strong>No interactions logged yet</strong><span>The relationship history starts with the first call, note or email.</span></div> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section className="source-section">
-          <div className="section-head"><div><ShieldCheck /><span><strong>Research provenance</strong><small>Keep the source trail visible</small></span></div></div>
+        <DisclosureSection
+          icon={<ShieldCheck />}
+          title="Research provenance"
+          subtitle="Sources and verification trail"
+          className="source-section"
+        >
           <div className="source-links">
             {contact.sourceUrl ? <a href={contact.sourceUrl} target="_blank" rel="noreferrer">Primary source <ExternalLink /></a> : null}
             {contact.verificationUrl ? <a href={contact.verificationUrl} target="_blank" rel="noreferrer">Verification <ExternalLink /></a> : null}
             {contact.website ? <a href={contact.website} target="_blank" rel="noreferrer">Website <ExternalLink /></a> : null}
           </div>
-        </section>
+        </DisclosureSection>
       </div>
     </div>
   );
