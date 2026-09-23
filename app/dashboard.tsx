@@ -1835,7 +1835,7 @@ function ContactDetail({
           <div className="contact-now-footer">
             <span><strong>Relationship:</strong> {depth.label}</span>
             <span><strong>Last update:</strong> {lastInteraction ? prettyDate(lastInteraction.at, true) : "No updates yet"}</span>
-            <span><strong>Owner:</strong> {TEAM_MEMBERS[contact.owner].name}</span>
+            <span><strong>Owner:</strong> {TEAM_MEMBERS[contact.owner || "paul"].name}</span>
           </div>
         </section>
 
