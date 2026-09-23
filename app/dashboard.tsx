@@ -1114,10 +1114,14 @@ export function Dashboard() {
       <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <div className="brand-mark">R</div>
+          <div className="brand-onions">
+            <OnionAvatar member="paul" compact />
+            <OnionAvatar member="mark" compact />
+            <OnionAvatar member="jonathan" compact />
+          </div>
           <div>
-            <strong>Relationship OS</strong>
-            <span>Capital · Architects · Contractors</span>
+            <strong>Onions OS</strong>
+            <span>Relationship intelligence · one shared brain</span>
           </div>
           <button className="mobile-close" onClick={() => setMenuOpen(false)}><X /></button>
         </div>
@@ -1148,7 +1152,7 @@ export function Dashboard() {
           <span>Working as</span>
           {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
             <button key={id} className={member === id ? "active" : ""} onClick={() => chooseUser(id)}>
-              <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+              <OnionAvatar member={id} />
               <strong>{TEAM_MEMBERS[id].name}</strong>
               {member === id ? <Check /> : null}
             </button>
@@ -1178,9 +1182,7 @@ export function Dashboard() {
           <div className="topbar-actions">
             <div className="team-legend">
               {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
-                <span key={id} title={TEAM_MEMBERS[id].name} style={{ background: TEAM_MEMBERS[id].color }}>
-                  {TEAM_MEMBERS[id].initials}
-                </span>
+                <span key={id} title={TEAM_MEMBERS[id].name}><OnionAvatar member={id} compact /></span>
               ))}
             </div>
             <button className="icon-action theme-toggle" onClick={toggleTheme} title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}>
@@ -1451,7 +1453,7 @@ export function Dashboard() {
               <div className="member-cards">
                 {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
                   <button key={id} className={member === id ? "active" : ""} onClick={() => chooseUser(id)}>
-                    <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                    <OnionAvatar member={id} />
                     <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Same access · color attribution</small></span>
                     {member === id ? <CheckCircle2 /> : null}
                   </button>
@@ -1521,7 +1523,7 @@ function HomeView({
     <div className="home-view dashboard-v2">
       <section className="dashboard-intro">
         <div className="dashboard-intro-copy">
-          <span>RELATIONSHIP OS</span>
+          <span>ONIONS OS</span>
           <h1>Today’s command center</h1>
           <p>See what needs attention, move relationships forward, and keep every call, document and follow-up attached to the right person.</p>
         </div>
@@ -2176,7 +2178,7 @@ function SettingsView({
           <div className="settings-member-grid">
             {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
               <button key={id} className={member === id ? "active" : ""} onClick={() => onChooseUser(id)}>
-                <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                <OnionAvatar member={id} />
                 <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Full workspace access</small></span>
                 {member === id ? <CheckCircle2 /> : null}
               </button>
