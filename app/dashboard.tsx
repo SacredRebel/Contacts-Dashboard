@@ -1594,6 +1594,7 @@ function ContactDetail({
           icon={<UserRound />}
           title="Relationship file"
           subtitle="Identity, role and direct contact details"
+          className="identity-section"
           action={contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : undefined}
         >
           <div className="identity-grid">
@@ -1610,6 +1611,7 @@ function ContactDetail({
           icon={<Sparkles />}
           title="Why this contact"
           subtitle="Public facts, fit and outreach context"
+          className="context-section"
         >
           <div className="context-card">
             <label>Public observation</label>
@@ -1671,6 +1673,7 @@ function ContactDetail({
           icon={<FileText />}
           title="Documents & actions"
           subtitle="Drafts, briefs, proposals and attached files"
+          className="documents-section"
           action={<button onClick={onDocument}><Paperclip /> Attach</button>}
         >
           <div className="document-actions-grid">
@@ -1701,6 +1704,7 @@ function ContactDetail({
           icon={<Network />}
           title="Connections"
           subtitle="Introductions, representation and referral paths"
+          className="connections-section"
           action={<button onClick={onConnection}><Plus /> Add</button>}
         >
           <div className="connection-list">
@@ -1719,6 +1723,7 @@ function ContactDetail({
           icon={<Activity />}
           title="Relationship timeline"
           subtitle="Calls, emails, voice notes and decisions"
+          className="timeline-section"
           action={<button onClick={() => {
             const note = window.prompt("Quick note");
             if (note?.trim()) onLog("note", note.trim());
