@@ -969,8 +969,6 @@ export function Dashboard() {
       { id: "activity", label: "Activity", icon: <Activity /> },
     ]},
   ];
-  const nav = navGroups.flatMap((group) => group.items);
-
   const viewMeta: Record<View, { kicker: string; title: string; subtitle: string; icon: ReactNode }> = {
     home: { kicker: "WORKSPACE HOME", title: "Home", subtitle: "Your relationship command center, shortcuts and highest-priority work.", icon: <Home /> },
     contacts: { kicker: "RELATIONSHIP DIRECTORY", title: "Contacts", subtitle: "People, companies, context, next actions and complete relationship history.", icon: <Users /> },
