@@ -958,9 +958,20 @@ export function Dashboard() {
     { id: "network" as const, label: "Network", icon: <Network /> },
     { id: "activity" as const, label: "Activity", icon: <Activity /> },
   ];
+  const viewMeta: Record<View, { kicker: string; title: string; subtitle: string; icon: ReactNode }> = {
+    home: { kicker: "DAILY OPERATING VIEW", title: "Today", subtitle: "What needs attention, what changed, and what should move next.", icon: <Home /> },
+    contacts: { kicker: "RELATIONSHIP DIRECTORY", title: "Contacts", subtitle: "People, companies, context, next actions and complete relationship history.", icon: <Users /> },
+    capital: { kicker: "CAPITAL INTELLIGENCE", title: "Capital", subtitle: "Qualify counterparties, protect disclosure, and move serious opportunities forward.", icon: <CircleDollarSign /> },
+    outreach: { kicker: "COMMUNICATION PIPELINE", title: "Outreach", subtitle: "Draft, review, approve, send and follow up without losing relationship context.", icon: <Mail /> },
+    tasks: { kicker: "EXECUTION QUEUE", title: "Tasks", subtitle: "Everything promised, assigned, due and waiting across the relationship network.", icon: <ListTodo /> },
+    documents: { kicker: "KNOWLEDGE & FILES", title: "Documents", subtitle: "Proposals, teasers, briefs, diligence files and relationship-specific assets.", icon: <FileText /> },
+    network: { kicker: "RELATIONSHIP GRAPH", title: "Network", subtitle: "See introductions, representation paths, companies and people as one connected system.", icon: <Network /> },
+    activity: { kicker: "TEAM HISTORY", title: "Activity", subtitle: "A chronological record of calls, notes, emails, documents, tasks and status changes.", icon: <Activity /> },
+  };
+  const currentMeta = viewMeta[view];
 
   return (
-    <div className={"relationship-app " + (shellMode === "desktop" ? "desktop-shell" : "mobile-shell")} data-theme={theme}>
+    <div className={"relationship-app " + (shellMode === "desktop" ? "desktop-shell" : "mobile-shell")} data-theme={theme} data-view={view}>
       <Toaster richColors position="bottom-right" />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
@@ -1007,9 +1018,13 @@ export function Dashboard() {
       <div className="app-main">
         <header className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(true)}><Menu /></button>
-          <div className="top-title">
-            <span>UNIFIED RELATIONSHIP NETWORK</span>
-            <strong>{view === "home" ? "Today" : nav.find((item) => item.id === view)?.label}</strong>
+          <div className="top-title-wrap">
+            <span className="top-title-icon">{currentMeta.icon}</span>
+            <div className="top-title">
+              <span>{currentMeta.kicker}</span>
+              <strong>{currentMeta.title}</strong>
+              <small>{currentMeta.subtitle}</small>
+            </div>
           </div>
           <div className="topbar-actions">
             <div className="team-legend">
@@ -1579,6 +1594,7 @@ function ContactDetail({
           icon={<UserRound />}
           title="Relationship file"
           subtitle="Identity, role and direct contact details"
+          className="identity-section"
           action={contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : undefined}
         >
           <div className="identity-grid">
@@ -1595,6 +1611,7 @@ function ContactDetail({
           icon={<Sparkles />}
           title="Why this contact"
           subtitle="Public facts, fit and outreach context"
+          className="context-section"
         >
           <div className="context-card">
             <label>Public observation</label>
@@ -1656,6 +1673,7 @@ function ContactDetail({
           icon={<FileText />}
           title="Documents & actions"
           subtitle="Drafts, briefs, proposals and attached files"
+          className="documents-section"
           action={<button onClick={onDocument}><Paperclip /> Attach</button>}
         >
           <div className="document-actions-grid">
@@ -1686,6 +1704,7 @@ function ContactDetail({
           icon={<Network />}
           title="Connections"
           subtitle="Introductions, representation and referral paths"
+          className="connections-section"
           action={<button onClick={onConnection}><Plus /> Add</button>}
         >
           <div className="connection-list">
@@ -1704,6 +1723,7 @@ function ContactDetail({
           icon={<Activity />}
           title="Relationship timeline"
           subtitle="Calls, emails, voice notes and decisions"
+          className="timeline-section"
           action={<button onClick={() => {
             const note = window.prompt("Quick note");
             if (note?.trim()) onLog("note", note.trim());
