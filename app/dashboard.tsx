@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CircleDollarSign,
   Clipboard,
   Clock3,
@@ -35,6 +36,7 @@ import {
   Plus,
   Printer,
   Ruler,
+  RotateCcw,
   Search,
   Settings,
   Sun,
@@ -42,6 +44,7 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Trash2,
   UserRound,
   Users,
   X,
@@ -53,6 +56,7 @@ import {
   changedSince,
   contactHeadline,
   draftEmail,
+  type EmailStrategy,
   exportContactsCsv,
   exportWorkspace,
   generateCallBrief,
@@ -101,6 +105,9 @@ type GeneratedDoc = {
   subject?: string;
   emailBody?: string;
   sourceDocumentId?: string;
+  emailStrategy?: EmailStrategy;
+  emailInstruction?: string;
+  emailVariant?: number;
 };
 
 type SpeechResultListLike = {
@@ -131,6 +138,55 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STAGES = Object.keys(STAGE_LABELS) as RelationshipStage[];
 const PIPELINES = Object.keys(PIPELINE_LABELS) as Pipeline[];
+
+const EMAIL_STRATEGIES: { id: EmailStrategy; label: string; description: string }[] = [
+  { id: "smart", label: "Smart cold email", description: "Best-fit research-led draft based on this contact and pipeline." },
+  { id: "cold_research", label: "Deep personalized cold", description: "Specific public observation → fit → one low-friction CTA." },
+  { id: "short_50", label: "Short 50-word", description: "Very short, plain, clarity-first version for busy buyers." },
+  { id: "value_first", label: "Value-first", description: "Offer useful public material or a concrete asset before asking for time." },
+  { id: "check_in", label: "Check-in", description: "Relationship follow-up after prior contact, without sounding like a cold blast." },
+  { id: "proposal", label: "Proposal email", description: "Send or introduce a proposal and frame the next step clearly." },
+  { id: "nda", label: "NDA request", description: "Move from public discussion into confidentiality cleanly." },
+  { id: "capital_qualify", label: "Capital qualification", description: "Clarify directness, decision-maker role, mandate and transaction range." },
+  { id: "referral", label: "Right-person / referral", description: "Ask for the correct procurement, decision-maker or principal contact." },
+  { id: "followup_3", label: "Day 3 follow-up", description: "One added detail or proof point. No re-pitch." },
+  { id: "breakup_10", label: "Day 10 close", description: "Clean final note with an easy out." },
+  { id: "custom", label: "Custom email", description: "Describe exactly what the email needs to accomplish." },
+];
+
+function OnionAvatar({ member, compact = false }: { member: TeamMemberId; compact?: boolean }) {
+  const person = TEAM_MEMBERS[member];
+  return (
+    <span className={"onion-character onion-" + member + (compact ? " compact" : "")} style={{ color: person.color }} aria-hidden="true">
+      <span className="onion-leaves"><i /><i /><i /></span>
+      <span className="onion-bulb"><b /><b /><em /></span>
+    </span>
+  );
+}
+
+function interactionLabel(type: Interaction["type"]) {
+  if (type === "voice") return "Voice note";
+  if (type === "email") return "Email";
+  if (type === "call") return "Call";
+  if (type === "text") return "Text";
+  if (type === "meeting") return "Meeting";
+  if (type === "document") return "Document";
+  if (type === "task") return "Task";
+  if (type === "introduction") return "Introduction";
+  if (type === "status") return "Status update";
+  return "Note";
+}
+
+function interactionIcon(type: Interaction["type"]) {
+  if (type === "voice") return <Mic />;
+  if (type === "email") return <Mail />;
+  if (type === "call") return <Phone />;
+  if (type === "text") return <MessageCircle />;
+  if (type === "document") return <FileText />;
+  if (type === "task") return <ListTodo />;
+  if (type === "introduction") return <Network />;
+  return <Activity />;
+}
 
 function prettyDate(value?: string | null, includeTime = false) {
   if (!value) return "Not set";
@@ -256,6 +312,10 @@ export function Dashboard() {
   const [voiceText, setVoiceText] = useState("");
   const [listening, setListening] = useState(false);
   const [generated, setGenerated] = useState<GeneratedDoc | null>(null);
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  const [emailStrategy, setEmailStrategy] = useState<EmailStrategy>("smart");
+  const [emailInstruction, setEmailInstruction] = useState("");
+  const [emailVariant, setEmailVariant] = useState(0);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [newContact, setNewContact] = useState({
@@ -505,9 +565,9 @@ export function Dashboard() {
     patchContact(
       selected.id,
       { nextAction: "", nextActionDue: null },
-      makeInteraction(member, "task", "Completed next action: " + selected.nextAction),
+      makeInteraction(member, "task", "Marked next action complete: " + selected.nextAction),
     );
-    toast.success("Next action completed");
+    toast.success("Action marked complete", { description: "The completed action is now visible in What’s happening now." });
   };
 
   const addDocumentLink = () => {
@@ -588,14 +648,60 @@ export function Dashboard() {
       return;
     }
     const touch = kind === "email3" ? 3 : kind === "email10" ? 10 : 0;
-    const draft = draftEmail(selected, touch);
+    const strategy: EmailStrategy = touch === 3 ? "followup_3" : touch === 10 ? "breakup_10" : "smart";
+    const draft = draftEmail(selected, touch, strategy, "", 0);
     setGenerated({
       title: (touch ? "Follow-up Day " + touch : "Email") + " — " + selected.name,
       content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
       type: "email",
       subject: draft.subject,
       emailBody: draft.body,
+      emailStrategy: strategy,
+      emailInstruction: "",
+      emailVariant: 0,
     });
+  };
+
+  const openEmailComposer = () => {
+    if (!selected) return;
+    setEmailStrategy(selected.pipeline === "capital" ? "capital_qualify" : "smart");
+    setEmailInstruction("");
+    setEmailVariant(0);
+    setEmailComposerOpen(true);
+  };
+
+  const generateComposerEmail = () => {
+    if (!selected) return;
+    const touch: 0 | 3 | 10 = emailStrategy === "followup_3" ? 3 : emailStrategy === "breakup_10" ? 10 : 0;
+    const draft = draftEmail(selected, touch, emailStrategy, emailInstruction, emailVariant);
+    const label = EMAIL_STRATEGIES.find((item) => item.id === emailStrategy)?.label || "Email";
+    setGenerated({
+      title: label + " — " + selected.name,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      type: "email",
+      subject: draft.subject,
+      emailBody: draft.body,
+      emailStrategy,
+      emailInstruction,
+      emailVariant,
+    });
+    setEmailComposerOpen(false);
+  };
+
+  const recraftGeneratedEmail = () => {
+    if (!selected || !generated || generated.type !== "email") return;
+    const strategy = generated.emailStrategy || "smart";
+    const nextVariant = (generated.emailVariant || 0) + 1;
+    const touch: 0 | 3 | 10 = strategy === "followup_3" ? 3 : strategy === "breakup_10" ? 10 : 0;
+    const draft = draftEmail(selected, touch, strategy, generated.emailInstruction || "", nextVariant);
+    setGenerated({
+      ...generated,
+      content: "SUBJECT: " + draft.subject + "\n\n" + draft.body,
+      subject: draft.subject,
+      emailBody: draft.body,
+      emailVariant: nextVariant,
+    });
+    toast.success("Recrafted", { description: "Generated a different version using the same strategy." });
   };
 
   const saveGenerated = () => {
@@ -725,7 +831,7 @@ export function Dashboard() {
     patchContact(selected.id, {}, makeInteraction(member, "voice", summary, voiceText.trim()));
     setVoiceOpen(false);
     setVoiceText("");
-    toast.success("Voice note logged", { description: "It is now part of the relationship timeline." });
+    toast.success("Voice note logged", { description: "It now appears at the top of What’s happening now." });
   };
 
   const createQuickContact = () => {
@@ -850,6 +956,19 @@ export function Dashboard() {
       interactions: [...item.interactions, makeInteraction(member, "document", "Created Day " + touch + " outreach follow-up draft.")],
     }));
     toast.success("Day " + touch + " draft added to Outreach");
+  };
+
+  const removeQueuedEmailDraft = (contactId: string, documentId: string) => {
+    const contact = contacts.find((item) => item.id === contactId);
+    const document = contact?.documents.find((item) => item.id === documentId);
+    if (!contact || !document || document.sentAt) return;
+    if (!window.confirm("Remove this draft from Outreach? The contact and sent history will stay intact.")) return;
+    mutateContact(contactId, (item) => ({
+      ...item,
+      documents: item.documents.filter((entry) => entry.id !== documentId),
+      interactions: [...item.interactions, makeInteraction(member, "document", "Removed unsent outreach draft: " + document.title + ".")],
+    }));
+    toast.success("Draft removed from Outreach");
   };
 
   const editQueuedEmail = (contact: RelationshipContact, document: ContactDocument) => {
@@ -995,10 +1114,14 @@ export function Dashboard() {
       <input ref={importRef} hidden type="file" accept=".json,application/json" onChange={(e) => void importBackup(e.target.files?.[0])} />
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <div className="brand-mark">R</div>
+          <div className="brand-onions">
+            <OnionAvatar member="paul" compact />
+            <OnionAvatar member="mark" compact />
+            <OnionAvatar member="jonathan" compact />
+          </div>
           <div>
-            <strong>Relationship OS</strong>
-            <span>Capital · Architects · Contractors</span>
+            <strong>Onions OS</strong>
+            <span>Relationship intelligence · one shared brain</span>
           </div>
           <button className="mobile-close" onClick={() => setMenuOpen(false)}><X /></button>
         </div>
@@ -1029,7 +1152,7 @@ export function Dashboard() {
           <span>Working as</span>
           {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
             <button key={id} className={member === id ? "active" : ""} onClick={() => chooseUser(id)}>
-              <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+              <OnionAvatar member={id} />
               <strong>{TEAM_MEMBERS[id].name}</strong>
               {member === id ? <Check /> : null}
             </button>
@@ -1059,9 +1182,7 @@ export function Dashboard() {
           <div className="topbar-actions">
             <div className="team-legend">
               {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
-                <span key={id} title={TEAM_MEMBERS[id].name} style={{ background: TEAM_MEMBERS[id].color }}>
-                  {TEAM_MEMBERS[id].initials}
-                </span>
+                <span key={id} title={TEAM_MEMBERS[id].name}><OnionAvatar member={id} compact /></span>
               ))}
             </div>
             <button className="icon-action theme-toggle" onClick={toggleTheme} title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}>
@@ -1155,6 +1276,7 @@ export function Dashboard() {
                     onStage={updateStage}
                     onPatch={(changes) => patchContact(selected.id, changes)}
                     onVoice={startVoice}
+                    onDraft={openEmailComposer}
                     onComplete={completePrimaryAction}
                     onTask={addTask}
                     onDocument={addDocumentLink}
@@ -1181,6 +1303,7 @@ export function Dashboard() {
               onApprove={approveQueuedEmail}
               onOpenEmail={openQueuedEmail}
               onMarkSent={markQueuedEmailSent}
+              onRemove={removeQueuedEmailDraft}
             />
           ) : null}
 
@@ -1290,7 +1413,7 @@ export function Dashboard() {
             <textarea value={voiceText} onChange={(event) => setVoiceText(event.target.value)} placeholder="Example: I just talked to Brian. He needs the teaser, a follow-up email, and a call Wednesday. He says he represents the money but I’m not sure he is the principal…" />
             <div className="modal-actions">
               <button className="secondary" onClick={listening ? stopVoice : startVoice}>{listening ? "Stop listening" : "Start listening"}</button>
-              <button className="primary" disabled={!selected || !voiceText.trim()} onClick={saveVoice}>Save to timeline</button>
+              <button className="primary" disabled={!selected || !voiceText.trim()} onClick={saveVoice}>Save update</button>
             </div>
           </div>
         </div>
@@ -1332,7 +1455,7 @@ export function Dashboard() {
               <div className="member-cards">
                 {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
                   <button key={id} className={member === id ? "active" : ""} onClick={() => chooseUser(id)}>
-                    <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                    <OnionAvatar member={id} />
                     <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Same access · color attribution</small></span>
                     {member === id ? <CheckCircle2 /> : null}
                   </button>
@@ -1353,15 +1476,60 @@ export function Dashboard() {
         </div>
       ) : null}
 
+      {emailComposerOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEmailComposerOpen(false); }}>
+          <div className="modal email-composer-modal">
+            <div className="modal-head">
+              <div><Sparkles /><span><strong>Draft an email</strong><small>{selected ? selected.name + " · " + selected.organization : "Select a contact first"}</small></span></div>
+              <button onClick={() => setEmailComposerOpen(false)}><X /></button>
+            </div>
+            <div className="email-composer-source">
+              <span><ShieldCheck /></span>
+              <div><strong>Cold Email OS rules are active</strong><small>Research-led · short/plain copy · one CTA · human review · pipeline-specific framing.</small></div>
+            </div>
+            <div className="email-composer-grid">
+              <label className="email-strategy-field">
+                <span>Email type / strategy</span>
+                <select value={emailStrategy} onChange={(event) => { setEmailStrategy(event.target.value as EmailStrategy); setEmailVariant(0); }}>
+                  {EMAIL_STRATEGIES.map((strategy) => <option key={strategy.id} value={strategy.id}>{strategy.label}</option>)}
+                </select>
+                <small>{EMAIL_STRATEGIES.find((strategy) => strategy.id === emailStrategy)?.description}</small>
+              </label>
+              <label className="email-custom-field">
+                <span>Custom instruction <em>optional</em></span>
+                <textarea
+                  value={emailInstruction}
+                  onChange={(event) => setEmailInstruction(event.target.value)}
+                  placeholder="Example: Ask them to sign our NDA before I send the confidential proposal, keep it warm because Mark already spoke with them."
+                />
+                <small>Use this for an NDA request, a proposal, a specific document, a personal check-in, or anything unusual.</small>
+              </label>
+            </div>
+            <div className="email-strategy-chips">
+              {["cold_research","short_50","value_first","check_in","proposal","nda","capital_qualify"].map((id) => {
+                const strategy = EMAIL_STRATEGIES.find((item) => item.id === id);
+                if (!strategy) return null;
+                return <button key={id} className={emailStrategy === id ? "active" : ""} onClick={() => { setEmailStrategy(id as EmailStrategy); setEmailVariant(0); }}>{strategy.label}</button>;
+              })}
+            </div>
+            <div className="modal-actions">
+              <button className="secondary" onClick={() => setEmailComposerOpen(false)}>Cancel</button>
+              <button className="primary" disabled={!selected} onClick={generateComposerEmail}><Sparkles /> Generate email</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {generated ? (
         <div className="modal-backdrop document-modal-wrap" onMouseDown={(event) => { if (event.target === event.currentTarget) setGenerated(null); }}>
           <div className="modal document-modal">
             <div className="modal-head">
-              <div><Sparkles /><span><strong>{generated.title}</strong><small>Working draft · human review required</small></span></div>
+              <div><Sparkles /><span><strong>{generated.title}</strong><small>{generated.type === "email" && generated.emailStrategy ? (EMAIL_STRATEGIES.find((strategy) => strategy.id === generated.emailStrategy)?.label || "Email") + " · " : ""}Working draft · human review required</small></span></div>
               <button onClick={() => setGenerated(null)}><X /></button>
             </div>
             <textarea className="document-editor" value={generated.content} onChange={(event) => setGenerated({ ...generated, content: event.target.value })} />
             <div className="modal-actions document-actions">
+              {generated.type === "email" ? <button className="secondary recraft-email" onClick={recraftGeneratedEmail}><RotateCcw /> Recraft / another version</button> : null}
               <button className="secondary" onClick={() => navigator.clipboard.writeText(generated.content).then(() => toast.success("Copied"))}><Copy /> Copy</button>
               <button className="secondary" onClick={() => window.print()}><Printer /> Print / PDF</button>
               <button className="secondary" onClick={saveGenerated}><FilePlus2 /> Save to contact</button>
@@ -1402,7 +1570,7 @@ function HomeView({
     <div className="home-view dashboard-v2">
       <section className="dashboard-intro">
         <div className="dashboard-intro-copy">
-          <span>RELATIONSHIP OS</span>
+          <span>ONIONS OS</span>
           <h1>Today’s command center</h1>
           <p>See what needs attention, move relationships forward, and keep every call, document and follow-up attached to the right person.</p>
         </div>
@@ -1558,6 +1726,7 @@ function ContactDetail({
   onStage,
   onPatch,
   onVoice,
+  onDraft,
   onComplete,
   onTask,
   onDocument,
@@ -1572,6 +1741,7 @@ function ContactDetail({
   onStage: (stage: RelationshipStage) => void;
   onPatch: (changes: Partial<RelationshipContact>) => void;
   onVoice: () => void;
+  onDraft: () => void;
   onComplete: () => void;
   onTask: () => void;
   onDocument: () => void;
@@ -1582,6 +1752,7 @@ function ContactDetail({
   const depth = relationshipDepth(contact);
   const primaryTask = nextOpenTask(contact);
   const timeline = [...contact.interactions].sort((a, b) => b.at.localeCompare(a.at));
+  const recentActivity = timeline.slice(0, 4);
   const lastInteraction = timeline[0];
   const index = filtered.findIndex((item) => item.id === contact.id);
   const phoneOk = validPhone(contact.phone);
@@ -1632,12 +1803,42 @@ function ContactDetail({
         {phoneOk ? <a href={phoneHref(contact.phone)}><Phone /><span>Call</span></a> : <button disabled><Phone /><span>Call</span></button>}
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
-        <button onClick={onVoice}><Mic /><span>Voice</span></button>
-        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft</span></button>
-        <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
+        <button onClick={onVoice}><Mic /><span>Voice update</span></button>
+        <button onClick={onDraft} className="draft-action"><Sparkles /><span>Draft email</span><ChevronDown /></button>
+        <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Complete action</span></button>
       </div>
 
       <div className="detail-body">
+        <section className="contact-now-card">
+          <div className="contact-now-head">
+            <div>
+              <span className="contact-now-icon"><Activity /></span>
+              <span><strong>What’s happening now</strong><small>The latest calls, emails, notes and team updates on this contact.</small></span>
+            </div>
+            <em className={"stage stage-" + contact.stage}>{STAGE_LABELS[contact.stage]}</em>
+          </div>
+          <div className="contact-now-list">
+            {recentActivity.length ? recentActivity.map((item) => (
+              <div key={item.id} className={"contact-now-row activity-" + item.type}>
+                <OnionAvatar member={item.userId} />
+                <span className="contact-now-type">{interactionIcon(item.type)}</span>
+                <span className="contact-now-copy">
+                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{interactionLabel(item.type)}</em><small>{prettyDate(item.at, true)}</small></span>
+                  <p>{item.summary}</p>
+                  {item.type === "voice" && item.transcript ? <blockquote>{item.transcript.slice(0, 240)}{item.transcript.length > 240 ? "…" : ""}</blockquote> : null}
+                </span>
+              </div>
+            )) : (
+              <div className="contact-now-empty"><Activity /><span><strong>No team activity yet</strong><small>A call, voice note, email, text or note will appear here immediately.</small></span></div>
+            )}
+          </div>
+          <div className="contact-now-footer">
+            <span><strong>Relationship:</strong> {depth.label}</span>
+            <span><strong>Last update:</strong> {lastInteraction ? prettyDate(lastInteraction.at, true) : "No updates yet"}</span>
+            <span><strong>Owner:</strong> {TEAM_MEMBERS[contact.owner || "paul"].name}</span>
+          </div>
+        </section>
+
         {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
 
         <section className="next-action-card focus-card">
@@ -1649,7 +1850,7 @@ function ContactDetail({
             <input value={contact.nextAction} onChange={(e) => onPatch({ nextAction: e.target.value })} placeholder="What needs to happen next?" />
             <input type="date" value={contact.nextActionDue ? contact.nextActionDue.slice(0, 10) : ""} onChange={(e) => onPatch({ nextActionDue: e.target.value ? new Date(e.target.value + "T17:00:00").toISOString() : null })} />
           </div>
-          {primaryTask ? <div className="task-chip"><span style={{ background: TEAM_MEMBERS[primaryTask.assignedTo].color }}>{TEAM_MEMBERS[primaryTask.assignedTo].initials}</span><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
+          {primaryTask ? <div className="task-chip"><OnionAvatar member={primaryTask.assignedTo} compact /><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
         </section>
 
         <DisclosureSection
@@ -1783,8 +1984,8 @@ function ContactDetail({
 
         <DisclosureSection
           icon={<Activity />}
-          title="Relationship timeline"
-          subtitle="Calls, emails, voice notes and decisions"
+          title="Full activity history"
+          subtitle="Every logged interaction, decision and relationship change"
           className="timeline-section"
           action={<button onClick={() => {
             const note = window.prompt("Quick note");
@@ -1795,9 +1996,9 @@ function ContactDetail({
             {timeline.map((item) => (
               <div key={item.id} className="timeline-item">
                 <i style={{ background: TEAM_MEMBERS[item.userId].color }} />
-                <span className="timeline-icon">{item.type === "voice" ? <Mic /> : item.type === "call" ? <Phone /> : item.type === "email" ? <Mail /> : item.type === "document" ? <FileText /> : <Activity />}</span>
+                <span className="timeline-icon">{interactionIcon(item.type)}</span>
                 <span className="timeline-copy">
-                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{item.type.replaceAll("_", " ")}</em><small>{prettyDate(item.at, true)}</small></span>
+                  <span><strong>{TEAM_MEMBERS[item.userId].name}</strong><em>{interactionLabel(item.type)}</em><small>{prettyDate(item.at, true)}</small></span>
                   <p>{item.summary}</p>
                   {item.transcript && item.transcript !== item.summary ? <details><summary>Full transcript</summary><p>{item.transcript}</p></details> : null}
                 </span>
@@ -1835,6 +2036,7 @@ function OutreachView({
   onApprove,
   onOpenEmail,
   onMarkSent,
+  onRemove,
 }: {
   contacts: RelationshipContact[];
   queued: { contact: RelationshipContact; document: ContactDocument }[];
@@ -1846,6 +2048,7 @@ function OutreachView({
   onApprove: (contactId: string, documentId: string) => void;
   onOpenEmail: (contact: RelationshipContact, document: ContactDocument) => void;
   onMarkSent: (contactId: string, documentId: string) => void;
+  onRemove: (contactId: string, documentId: string) => void;
 }) {
   const [pipeline, setPipeline] = useState<Pipeline | "all">("all");
   const visible = queued.filter(({ contact }) => pipeline === "all" || contact.pipeline === pipeline);
@@ -1906,6 +2109,7 @@ function OutreachView({
                     </span>
                     <span className="outreach-actions">
                       <button className="secondary" onClick={() => onEdit(contact, document)}>Edit draft</button>
+                      <button className="secondary remove-draft" onClick={() => onRemove(contact.id, document.id)}><Trash2 /> Remove</button>
                       {!document.approvedAt ? <button className="secondary approve-draft" onClick={() => onApprove(contact.id, document.id)}><ShieldCheck /> Approve</button> : null}
                       <button className="secondary" disabled={!contact.email || !document.approvedAt} onClick={() => onOpenEmail(contact, document)}><Mail /> Open mail</button>
                       <button className="primary" disabled={!document.approvedAt} onClick={() => onMarkSent(contact.id, document.id)}><CheckCircle2 /> Mark sent</button>
@@ -2057,7 +2261,7 @@ function SettingsView({
           <div className="settings-member-grid">
             {(Object.keys(TEAM_MEMBERS) as TeamMemberId[]).map((id) => (
               <button key={id} className={member === id ? "active" : ""} onClick={() => onChooseUser(id)}>
-                <i style={{ background: TEAM_MEMBERS[id].color }}>{TEAM_MEMBERS[id].initials}</i>
+                <OnionAvatar member={id} />
                 <span><strong>{TEAM_MEMBERS[id].name}</strong><small>Full workspace access</small></span>
                 {member === id ? <CheckCircle2 /> : null}
               </button>

@@ -471,83 +471,255 @@ export function generateInformationPack(contact: RelationshipContact) {
   ].join("\n");
 }
 
-export function draftEmail(contact: RelationshipContact, touch: 0 | 3 | 10 = 0) {
-  const first = contact.name && !/team|desk|office|contact/i.test(contact.name) ? contact.name.split(" ")[0] : "there";
+export type EmailStrategy =
+  | "smart"
+  | "cold_research"
+  | "short_50"
+  | "value_first"
+  | "check_in"
+  | "proposal"
+  | "nda"
+  | "capital_qualify"
+  | "referral"
+  | "followup_3"
+  | "breakup_10"
+  | "custom";
 
-  if (touch === 3) {
-    if (contact.pipeline === "capital") {
-      return {
-        subject: "re: regenerative real estate",
-        body:
-          "Hi " + first + ",\n\n" +
-          "Following up with one point that may help determine fit: we are screening for the actual capital role and mandate before moving beyond public materials. " +
-          "If this is within your lane, could you tell me whether you participate directly or as an advisor / introducer, and the rough transaction range you typically consider?\n\nPaul",
-      };
-    }
-    return {
-      subject: contact.pipeline === "architect" ? "re: material collaboration" : "re: project sourcing",
-      body:
-        "Hi " + first + ",\n\n" +
-        "One quick follow-up: " +
-        (contact.materialFit || contact.outreachHook || "the sourcing / project fit") +
-        " is the reason I thought this could be relevant. " +
-        "If there is a better person for specifications, procurement or RFQs, I’m happy to contact them instead.\n\nPaul",
-    };
-  }
+function firstName(contact: RelationshipContact) {
+  return contact.name && !/team|desk|office|contact/i.test(contact.name)
+    ? contact.name.split(" ")[0]
+    : "there";
+}
 
-  if (touch === 10) {
-    return {
-      subject: contact.pipeline === "capital" ? "close the loop" : "close the loop",
-      body:
-        "Hi " + first + ",\n\n" +
-        "I’ll close the loop after this. If " +
-        (contact.pipeline === "capital" ? "this type of opportunity is outside your mandate" : "this is not relevant to your current projects") +
-        ", no problem. If there is a better person or a later time, a quick direction is enough.\n\nPaul",
-    };
-  }
+function cleanSentence(value: string) {
+  return value.trim().replace(/[.?!]+$/, "");
+}
 
+function contactReason(contact: RelationshipContact) {
+  return cleanSentence(
+    contact.publicObservation ||
+    contact.outreachHook ||
+    contact.materialFit ||
+    contact.professionalThemes ||
+    contact.category ||
+    "your work",
+  );
+}
+
+function pipelineOffer(contact: RelationshipContact) {
   if (contact.pipeline === "capital") {
-    const directness = contact.capital?.directness || "Unknown";
-    const qualifier =
-      /broker|introducer|representative|unknown/i.test(directness)
-        ? "Before I send anything beyond the public overview, could you clarify whether you are the direct decision-maker for the capital or representing / introducing the party that is?"
-        : "Could you share how you typically participate in transactions like this and what mandate or sizing parameters you would want us to confirm first?";
-    return {
-      subject: "regenerative real estate",
-      body:
-        "Hi " + first + ",\n\n" +
-        (contact.publicObservation
-          ? "I came across " + contact.organization + " and noticed " + contact.publicObservation.replace(/\.$/, "") + ".\n\n"
-          : "I’m reaching out regarding a regenerative real-estate development opportunity in California.\n\n") +
-        "We are speaking selectively with capital partners whose public mandate appears aligned before sharing non-public transaction material. " +
-        qualifier +
-        "\n\nIf there is a fit, I can send the public teaser and coordinate the right next conversation.\n\nPaul",
-    };
+    return "a regenerative real-estate opportunity where we qualify fit before sharing non-public transaction material";
   }
   if (contact.pipeline === "architect") {
+    return "a European building-material sourcing and RFQ route for high-performance, regenerative and design-led projects";
+  }
+  return "a direct European construction-material sourcing and RFQ route for contractors and development teams";
+}
+
+function pipelineCta(contact: RelationshipContact) {
+  if (contact.pipeline === "capital") {
+    return "If it fits your mandate, I can send the public teaser and coordinate the right next conversation.";
+  }
+  if (contact.pipeline === "architect") {
+    return "Would it be useful if I sent the short material overview and sourcing route?";
+  }
+  return "Would it be useful if I sent the catalog / RFQ overview to the right preconstruction or procurement contact?";
+}
+
+function signature() {
+  return "Paul\n\nReply \"no\" and I won’t follow up.";
+}
+
+export function draftEmail(
+  contact: RelationshipContact,
+  touch: 0 | 3 | 10 = 0,
+  strategy: EmailStrategy = "smart",
+  customInstruction = "",
+  variant = 0,
+) {
+  const first = firstName(contact);
+  const reason = contactReason(contact);
+  const offer = pipelineOffer(contact);
+  const cta = pipelineCta(contact);
+  const variantIndex = Math.abs(variant) % 3;
+
+  if (touch === 3 || strategy === "followup_3") {
+    const details = [
+      contact.materialFit || contact.outreachHook || "the fit I mentioned",
+      contact.publicObservation || contact.professionalThemes || "the reason I reached out",
+      contact.pipeline === "capital" ? "the mandate and direct-capital fit" : "the sourcing / project fit",
+    ];
+    const subject = contact.pipeline === "capital" ? "one detail" : "one more detail";
     return {
-      subject: "material collaboration",
+      subject,
       body:
         "Hi " + first + ",\n\n" +
-        (contact.publicObservation
-          ? "I noticed " + contact.publicObservation.replace(/\.$/, "") + ".\n\n"
-          : "I’ve been looking at " + contact.organization + "’s work.\n\n") +
-        "We are building a European building-material sourcing and RFQ route around high-performance, regenerative and design-led projects. " +
-        "I thought there may be a useful fit around " + (contact.materialFit || contact.professionalThemes || "future project specifications") + ".\n\n" +
-        "Would it be useful if I sent the short material overview and sourcing route?\n\nPaul",
+        "One thing I didn’t mention: " + cleanSentence(details[variantIndex]) + ".\n\n" +
+        (contact.pipeline === "capital"
+          ? "Before anything non-public moves, I’d rather confirm whether you participate directly, advise the capital, or introduce the principal."
+          : "If there’s a better person for specifications, procurement or RFQs, I’m happy to send it there instead.") +
+        "\n\nNo need to reply if it’s not relevant.\n\nPaul",
     };
   }
-  return {
-    subject: "project sourcing",
-    body:
-      "Hi " + first + ",\n\n" +
-      (contact.publicObservation
-        ? "I noticed " + contact.publicObservation.replace(/\.$/, "") + ".\n\n"
-        : "I’ve been looking at " + contact.organization + "’s project work.\n\n") +
-      "We are building a direct European construction-material sourcing and RFQ route for contractors and development teams. " +
-      "Based on your work, " + (contact.materialFit || "the procurement side") + " looked potentially relevant.\n\n" +
-      "Would it be useful if I sent the catalog / RFQ overview to the right preconstruction or procurement contact?\n\nPaul",
-  };
+
+  if (touch === 10 || strategy === "breakup_10") {
+    const closes = [
+      "I’ll close the loop after this.",
+      "Last note from me and I’ll leave it here.",
+      "I’ll make this my last message on it.",
+    ];
+    return {
+      subject: "close the loop",
+      body:
+        "Hi " + first + ",\n\n" +
+        closes[variantIndex] + " " +
+        (contact.pipeline === "capital"
+          ? "If this type of opportunity is outside your mandate, no problem."
+          : "If this isn’t relevant to current projects, no problem.") +
+        " If there’s a better person or a better time, a quick direction is enough.\n\nPaul",
+    };
+  }
+
+  if (strategy === "check_in") {
+    const openers = [
+      "Wanted to check back in on where this sits.",
+      "Quick check-in on this relationship.",
+      "Circling back because there may be a useful next step here.",
+    ];
+    return {
+      subject: "quick check-in",
+      body:
+        "Hi " + first + ",\n\n" +
+        openers[variantIndex] + " " +
+        (contact.nextAction ? "The last next step on my side was: " + cleanSentence(contact.nextAction) + "." : "") +
+        "\n\nIf priorities changed, no issue — just point me in the right direction.\n\nPaul",
+    };
+  }
+
+  if (strategy === "proposal") {
+    return {
+      subject: "proposal",
+      body:
+        "Hi " + first + ",\n\n" +
+        "I put together the proposal around " + reason + ". It’s focused on the concrete next step rather than a broad service list.\n\n" +
+        "If the direction looks right, I can tighten the scope and move the working pieces forward.\n\nPaul",
+    };
+  }
+
+  if (strategy === "nda") {
+    return {
+      subject: "nda",
+      body:
+        "Hi " + first + ",\n\n" +
+        "Before we move into the non-public material, I’d like to get the confidentiality step handled cleanly. " +
+        "I can send our NDA, or I’m happy to review yours if that’s easier.\n\n" +
+        "Once that’s in place, we can move into the appropriate documents.\n\nPaul",
+    };
+  }
+
+  if (strategy === "capital_qualify") {
+    return {
+      subject: "capital fit",
+      body:
+        "Hi " + first + ",\n\n" +
+        (contact.publicObservation ? reason + " is what put you on my radar. " : "") +
+        "Before I send anything beyond public material, I want to make sure I understand the capital role correctly. " +
+        "Do you participate directly, represent the decision-maker, or make introductions — and what rough transaction range / mandate do you typically work within?\n\nPaul",
+    };
+  }
+
+  if (strategy === "referral") {
+    return {
+      subject: "right person",
+      body:
+        "Hi " + first + ",\n\n" +
+        "I’m reaching out because of " + reason + ". " +
+        "The fit on my side is " + offer + ".\n\n" +
+        "If this belongs with someone else on your team, who would be the right person for me to contact?\n\n" + signature(),
+    };
+  }
+
+  if (strategy === "short_50") {
+    const observations = [
+      reason,
+      cleanSentence(contact.outreachHook || reason),
+      cleanSentence(contact.materialFit || reason),
+    ];
+    return {
+      subject: contact.pipeline === "capital" ? "capital fit" : contact.pipeline === "architect" ? "material fit" : "project sourcing",
+      body:
+        observations[variantIndex] + ".\n\n" +
+        "I’m working on " + offer + ". " +
+        cta + "\n\n" + signature(),
+    };
+  }
+
+  if (strategy === "value_first") {
+    const valueLine = contact.pipeline === "capital"
+      ? "I can send a public-only teaser first so you can decide whether it belongs in your mandate before either side spends time on diligence."
+      : "I can send a short, concrete overview first so you can decide whether it belongs in an active project before anyone gets pulled into a meeting.";
+    return {
+      subject: contact.pipeline === "capital" ? "public teaser" : "useful overview",
+      body:
+        "Hi " + first + ",\n\n" +
+        reason + " is what made me think this may be worth putting in front of you.\n\n" +
+        valueLine + "\n\n" +
+        "If it’s useful, I’ll send it over. If not, no problem.\n\n" + signature(),
+    };
+  }
+
+  if (strategy === "custom") {
+    const instruction = cleanSentence(customInstruction || "send a concise, specific note about the next step");
+    return {
+      subject: "next step",
+      body:
+        "Hi " + first + ",\n\n" +
+        reason + " is the context. " +
+        "I wanted to reach out about " + instruction.toLowerCase() + ".\n\n" +
+        "I’ll keep it simple: " + cta + "\n\nPaul",
+    };
+  }
+
+  if (strategy === "cold_research" || strategy === "smart") {
+    if (contact.pipeline === "capital") {
+      const directness = contact.capital?.directness || "Unknown";
+      const qualifier =
+        /broker|introducer|representative|unknown/i.test(directness)
+          ? "Before anything non-public moves, could you clarify whether you are the direct decision-maker for the capital or representing / introducing the party that is?"
+          : "Could you share how you typically participate in transactions like this and what mandate or sizing parameters you would want us to confirm first?";
+      const openings = [
+        contact.publicObservation ? reason + "." : "I’m reaching out regarding a regenerative real-estate development opportunity in California.",
+        contact.publicObservation ? "Your public focus on " + reason + " is what put you on my radar." : "I’m selectively mapping capital partners for a regenerative real-estate opportunity in California.",
+        contact.publicObservation ? reason + " looked relevant to something we’re working on." : "I’m looking for a very specific capital fit for a regenerative California development.",
+      ];
+      return {
+        subject: variantIndex === 1 ? "capital mandate" : "regenerative real estate",
+        body:
+          "Hi " + first + ",\n\n" +
+          openings[variantIndex] + "\n\n" +
+          qualifier +
+          "\n\nIf there’s a fit, I can send the public teaser and coordinate the right next conversation.\n\nPaul",
+      };
+    }
+
+    const openings = [
+      "I noticed " + reason + ".",
+      reason + " is what caught my attention.",
+      "I was looking through " + contact.organization + " and " + reason.toLowerCase() + " stood out.",
+    ];
+    const fit = contact.materialFit || contact.professionalThemes || contact.outreachHook || "future project specifications";
+    return {
+      subject: contact.pipeline === "architect" ? "material collaboration" : "project sourcing",
+      body:
+        "Hi " + first + ",\n\n" +
+        openings[variantIndex] + "\n\n" +
+        "I’m building " + offer + ". " +
+        "The possible fit I saw is around " + cleanSentence(fit) + ".\n\n" +
+        cta + "\n\n" + signature(),
+    };
+  }
+
+  return draftEmail(contact, touch, "smart", customInstruction, variant);
 }
 
 export function disclosureRank(value: string) {
