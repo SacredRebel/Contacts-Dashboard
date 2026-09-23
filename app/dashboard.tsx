@@ -1008,7 +1008,7 @@ export function Dashboard() {
         <header className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(true)}><Menu /></button>
           <div className="top-title">
-            <span>RELATIONSHIP OS <em className="desktop-build-badge">DESKTOP V3</em></span>
+            <span>UNIFIED RELATIONSHIP NETWORK</span>
             <strong>{view === "home" ? "Today" : nav.find((item) => item.id === view)?.label}</strong>
           </div>
           <div className="topbar-actions">
