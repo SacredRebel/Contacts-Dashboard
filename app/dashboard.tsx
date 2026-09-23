@@ -1423,6 +1423,42 @@ function HomeView({
   );
 }
 
+function DisclosureSection({
+  icon,
+  title,
+  subtitle,
+  defaultOpen = false,
+  className = "",
+  action,
+  badge,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  defaultOpen?: boolean;
+  className?: string;
+  action?: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className={"disclosure-section " + (open ? "open " : "") + className}>
+      <div className="disclosure-head">
+        <button className="disclosure-toggle" type="button" onClick={() => setOpen((value) => !value)}>
+          <span className="disclosure-icon">{icon}</span>
+          <span className="disclosure-copy"><strong>{title}</strong><small>{subtitle}</small></span>
+          {badge ? <span className="disclosure-badge">{badge}</span> : null}
+          <ChevronRight className="disclosure-chevron" />
+        </button>
+        {action ? <div className="disclosure-action">{action}</div> : null}
+      </div>
+      <div className="disclosure-body">{children}</div>
+    </section>
+  );
+}
+
 function ContactDetail({
   contact,
   contacts,
@@ -1486,8 +1522,12 @@ function ContactDetail({
           </div>
           <h1>{contact.name}</h1>
           <p>{contact.title || contact.category}{contact.organization ? " · " + contact.organization : ""}</p>
-          {contact.location ? <small><MapPin /> {contact.location}</small> : null}
-          {lastInteraction ? <small className="last-interaction"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
+          <div className="mobile-contact-meta">
+            {contact.location ? <span><MapPin /> {contact.location}</span> : null}
+            {lastInteraction ? <span><Activity /> {prettyDate(lastInteraction.at, true)}</span> : null}
+          </div>
+          {contact.location ? <small className="desktop-contact-meta"><MapPin /> {contact.location}</small> : null}
+          {lastInteraction ? <small className="last-interaction desktop-contact-meta"><Activity /> Last: {TEAM_MEMBERS[lastInteraction.userId].name} · {lastInteraction.type.replaceAll("_", " ")} · {prettyDate(lastInteraction.at, true)}</small> : null}
         </div>
         <div className="stage-control">
           <span>Relationship stage</span>
@@ -1501,16 +1541,17 @@ function ContactDetail({
         {phoneOk ? <a href={phoneHref(contact.phone)}><Phone /><span>Call</span></a> : <button disabled><Phone /><span>Call</span></button>}
         {phoneOk ? <a href={textHref(contact.phone)}><MessageCircle /><span>Text</span></a> : <button disabled><MessageCircle /><span>Text</span></button>}
         {contact.email ? <a href={"mailto:" + contact.email}><Mail /><span>Email</span></a> : <button disabled><Mail /><span>Email</span></button>}
-        <button onClick={onVoice}><Mic /><span>Voice note</span></button>
-        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft email</span></button>
+        <button onClick={onVoice}><Mic /><span>Voice</span></button>
+        <button onClick={() => onGenerate("email0")}><Sparkles /><span>Draft</span></button>
         <button onClick={onComplete} className="complete-action" disabled={!primaryTask && !contact.nextAction}><CheckCircle2 /><span>Done</span></button>
       </div>
 
       <div className="detail-body">
         {contact.warnings ? <div className="contact-alert"><ShieldCheck /><span><strong>Important context</strong><small>{contact.warnings}</small></span></div> : null}
-        <section className="next-action-card">
+
+        <section className="next-action-card focus-card">
           <div className="section-head">
-            <div><TargetIcon /><span><strong>Next best action</strong><small>The one thing nobody should have to guess</small></span></div>
+            <div><TargetIcon /><span><strong>Next best action</strong><small>Keep the next move obvious</small></span></div>
             <button onClick={onTask}><Plus /> Add task</button>
           </div>
           <div className="next-action-edit">
@@ -1520,11 +1561,12 @@ function ContactDetail({
           {primaryTask ? <div className="task-chip"><span style={{ background: TEAM_MEMBERS[primaryTask.assignedTo].color }}>{TEAM_MEMBERS[primaryTask.assignedTo].initials}</span><strong>{primaryTask.title}</strong><small>{primaryTask.dueAt ? "Due " + prettyDate(primaryTask.dueAt) : "No due date"}</small></div> : null}
         </section>
 
-        <section>
-          <div className="section-head">
-            <div><UserRound /><span><strong>Relationship file</strong><small>Identity and direct actions</small></span></div>
-            {contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : null}
-          </div>
+        <DisclosureSection
+          icon={<UserRound />}
+          title="Relationship file"
+          subtitle="Identity, role and direct contact details"
+          action={contact.notionUrl ? <a href={contact.notionUrl} target="_blank" rel="noreferrer">Notion <ExternalLink /></a> : undefined}
+        >
           <div className="identity-grid">
             <Info label="Organization" value={contact.organization} icon={<Building2 />} />
             <Info label="Role" value={contact.title || contact.category} icon={<BriefcaseBusiness />} />
@@ -1533,10 +1575,13 @@ function ContactDetail({
             <Info label="Website" value={contact.website || "Not recorded"} icon={<ExternalLink />} href={contact.website || undefined} external />
             <Info label="Contact confidence" value={contact.emailConfidence || "Not recorded"} icon={<ShieldCheck />} />
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head"><div><Sparkles /><span><strong>Why this contact</strong><small>Public facts and professional fit</small></span></div></div>
+        <DisclosureSection
+          icon={<Sparkles />}
+          title="Why this contact"
+          subtitle="Public facts, fit and outreach context"
+        >
           <div className="context-card">
             <label>Public observation</label>
             <p>{contact.publicObservation || "No public observation saved yet."}</p>
@@ -1548,14 +1593,16 @@ function ContactDetail({
             <div><label>Warnings / framing</label><p>{contact.warnings || "No warning recorded."}</p></div>
           </div>
           {contact.alignmentTags.length ? <div className="tag-row">{contact.alignmentTags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
-        </section>
+        </DisclosureSection>
 
         {contact.pipeline === "capital" && contact.capital ? (
-          <section className="capital-panel">
-            <div className="section-head">
-              <div><ShieldCheck /><span><strong>Capital qualification</strong><small>Responsive does not mean qualified capital</small></span></div>
-              <em>{capitalBadge(contact.capital)}</em>
-            </div>
+          <DisclosureSection
+            icon={<ShieldCheck />}
+            title="Capital qualification"
+            subtitle="Counterparty, capacity and disclosure controls"
+            className="capital-panel"
+            badge={<em>{capitalBadge(contact.capital)}</em>}
+          >
             <div className="qualification-grid">
               <label><span>Capital type</span><input value={contact.capital.capitalType} onChange={(e) => patchCapital({ capitalType: e.target.value })} /></label>
               <label><span>Direct / intermediary</span><select value={contact.capital.directness} onChange={(e) => patchCapital({ directness: e.target.value })}>
@@ -1588,14 +1635,15 @@ function ContactDetail({
                 return <span key={label} className={active ? "active" : ""}>{i + 1}<em>{label}</em></span>;
               })}
             </div>
-          </section>
+          </DisclosureSection>
         ) : null}
 
-        <section>
-          <div className="section-head">
-            <div><FileText /><span><strong>Documents & actions</strong><small>Create, attach and preserve versions</small></span></div>
-            <button onClick={onDocument}><Paperclip /> Attach link</button>
-          </div>
+        <DisclosureSection
+          icon={<FileText />}
+          title="Documents & actions"
+          subtitle="Drafts, briefs, proposals and attached files"
+          action={<button onClick={onDocument}><Paperclip /> Attach</button>}
+        >
           <div className="document-actions-grid">
             <button onClick={() => onGenerate("handoff")}><Clipboard /><span><strong>Handoff summary</strong><small>History, risks and next step</small></span></button>
             <button onClick={() => onGenerate("call")}><Phone /><span><strong>Call brief</strong><small>Context and unresolved questions</small></span></button>
@@ -1618,13 +1666,14 @@ function ContactDetail({
             ))}
             {!contact.documents.length ? <p className="empty-inline">No documents attached yet.</p> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head">
-            <div><Network /><span><strong>Connections</strong><small>Who introduced whom and how the network grows</small></span></div>
-            <button onClick={onConnection}><Plus /> Add connection</button>
-          </div>
+        <DisclosureSection
+          icon={<Network />}
+          title="Connections"
+          subtitle="Introductions, representation and referral paths"
+          action={<button onClick={onConnection}><Plus /> Add</button>}
+        >
           <div className="connection-list">
             {connected.map(({ connection, contact: linked }) => linked ? (
               <button key={connection.id} onClick={() => onSelect(linked.id)}>
@@ -1635,16 +1684,17 @@ function ContactDetail({
             ) : null)}
             {!connected.length ? <p className="empty-inline">No relationship links yet. Add introductions as they happen.</p> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section>
-          <div className="section-head">
-            <div><Activity /><span><strong>Relationship timeline</strong><small>Calls, emails, voice notes, documents and decisions</small></span></div>
-            <button onClick={() => {
-              const note = window.prompt("Quick note");
-              if (note?.trim()) onLog("note", note.trim());
-            }}><Plus /> Note</button>
-          </div>
+        <DisclosureSection
+          icon={<Activity />}
+          title="Relationship timeline"
+          subtitle="Calls, emails, voice notes and decisions"
+          action={<button onClick={() => {
+            const note = window.prompt("Quick note");
+            if (note?.trim()) onLog("note", note.trim());
+          }}><Plus /> Note</button>}
+        >
           <div className="timeline">
             {timeline.map((item) => (
               <div key={item.id} className="timeline-item">
@@ -1659,16 +1709,20 @@ function ContactDetail({
             ))}
             {!timeline.length ? <div className="empty-timeline"><Activity /><strong>No interactions logged yet</strong><span>The relationship history starts with the first call, note or email.</span></div> : null}
           </div>
-        </section>
+        </DisclosureSection>
 
-        <section className="source-section">
-          <div className="section-head"><div><ShieldCheck /><span><strong>Research provenance</strong><small>Keep the source trail visible</small></span></div></div>
+        <DisclosureSection
+          icon={<ShieldCheck />}
+          title="Research provenance"
+          subtitle="Sources and verification trail"
+          className="source-section"
+        >
           <div className="source-links">
             {contact.sourceUrl ? <a href={contact.sourceUrl} target="_blank" rel="noreferrer">Primary source <ExternalLink /></a> : null}
             {contact.verificationUrl ? <a href={contact.verificationUrl} target="_blank" rel="noreferrer">Verification <ExternalLink /></a> : null}
             {contact.website ? <a href={contact.website} target="_blank" rel="noreferrer">Website <ExternalLink /></a> : null}
           </div>
-        </section>
+        </DisclosureSection>
       </div>
     </div>
   );
