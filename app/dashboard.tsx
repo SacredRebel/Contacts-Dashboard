@@ -977,6 +977,8 @@ export function Dashboard() {
             <button
               key={item.id}
               className={view === item.id ? "active" : ""}
+              title={item.label}
+              aria-label={item.label}
               onClick={() => { setView(item.id); setMenuOpen(false); }}
             >
               {item.icon}<span>{item.label}</span>
@@ -1006,8 +1008,8 @@ export function Dashboard() {
         <header className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(true)}><Menu /></button>
           <div className="top-title">
-            <span>UNIFIED RELATIONSHIP NETWORK</span>
-            <strong>{view === "home" ? "What’s next?" : nav.find((item) => item.id === view)?.label}</strong>
+            <span>RELATIONSHIP OS <em className="desktop-build-badge">DESKTOP V3</em></span>
+            <strong>{view === "home" ? "Today" : nav.find((item) => item.id === view)?.label}</strong>
           </div>
           <div className="topbar-actions">
             <div className="team-legend">
