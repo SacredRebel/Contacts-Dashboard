@@ -1632,3 +1632,273 @@
     grid-template-columns: minmax(0,1.35fr) minmax(320px,.65fr) !important;
   }
 }
+
+
+/* ===== EXPLICIT RUNTIME SHELLS ===== */
+
+/* Desktop shell is runtime-selected in React and wins over width-only breakpoints. */
+.relationship-app.desktop-shell {
+  display: grid !important;
+  grid-template-columns: 248px minmax(0,1fr) !important;
+  min-width: 720px;
+}
+.relationship-app.desktop-shell .sidebar {
+  position: sticky !important;
+  inset: auto !important;
+  top: 0 !important;
+  width: auto !important;
+  height: 100vh !important;
+  padding: 18px 13px 14px !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.relationship-app.desktop-shell .mobile-close,
+.relationship-app.desktop-shell .menu-button,
+.relationship-app.desktop-shell .mobile-bottom-nav {
+  display: none !important;
+}
+.relationship-app.desktop-shell .brand {
+  justify-content: flex-start !important;
+  padding: 3px 6px 18px !important;
+}
+.relationship-app.desktop-shell .brand > div:nth-child(2) {
+  display: block !important;
+}
+.relationship-app.desktop-shell .brand-mark {
+  width: 38px !important;
+  height: 38px !important;
+}
+.relationship-app.desktop-shell .main-nav button,
+.relationship-app.desktop-shell .settings-button {
+  justify-content: flex-start !important;
+  min-height: 42px !important;
+  padding: 0 11px !important;
+  font-size: 11px !important;
+}
+.relationship-app.desktop-shell .main-nav button > span {
+  display: inline !important;
+}
+.relationship-app.desktop-shell .main-nav em {
+  position: static !important;
+  margin-left: auto !important;
+  min-width: 20px !important;
+  padding: 2px 6px !important;
+  font-size: 8px !important;
+}
+.relationship-app.desktop-shell .sidebar-team {
+  padding: 15px 4px 9px !important;
+}
+.relationship-app.desktop-shell .sidebar-team > span {
+  display: block !important;
+}
+.relationship-app.desktop-shell .sidebar-team button {
+  display: grid !important;
+  grid-template-columns: 28px minmax(0,1fr) 14px !important;
+  justify-content: stretch !important;
+  padding: 5px 7px !important;
+}
+.relationship-app.desktop-shell .sidebar-team button strong,
+.relationship-app.desktop-shell .sidebar-team button svg {
+  display: block !important;
+}
+
+.relationship-app.desktop-shell .topbar {
+  min-height: 62px !important;
+  padding: 8px 22px !important;
+}
+.relationship-app.desktop-shell .top-title strong {
+  font-size: 17px !important;
+}
+.relationship-app.desktop-shell .main-content {
+  min-width: 0 !important;
+  padding: 18px 22px 24px !important;
+  padding-bottom: 24px !important;
+}
+.relationship-app.desktop-shell .home-view,
+.relationship-app.desktop-shell .page-view {
+  width: min(1440px,100%) !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+}
+
+/* Desktop home should feel like software, not a landing page. */
+.relationship-app.desktop-shell .dashboard-v2 {
+  gap: 12px !important;
+}
+.relationship-app.desktop-shell .dashboard-intro {
+  min-height: 104px !important;
+  padding: 18px 20px !important;
+  border-radius: 16px !important;
+  align-items: center !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.relationship-app.desktop-shell .dashboard-intro-copy > span {
+  margin-bottom: 5px !important;
+  font-size: 8px !important;
+}
+.relationship-app.desktop-shell .dashboard-intro-copy h1 {
+  max-width: none !important;
+  font-size: clamp(28px,3vw,38px) !important;
+  line-height: 1 !important;
+  letter-spacing: -.04em !important;
+}
+.relationship-app.desktop-shell .dashboard-intro-copy p {
+  max-width: 780px !important;
+  margin-top: 7px !important;
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+.relationship-app.desktop-shell .dashboard-intro-actions {
+  gap: 7px !important;
+}
+.relationship-app.desktop-shell .dashboard-intro-actions button {
+  min-height: 36px !important;
+  padding: 0 11px !important;
+  font-size: 8px !important;
+}
+
+.relationship-app.desktop-shell .dashboard-kpis {
+  grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  gap: 9px !important;
+}
+.relationship-app.desktop-shell .dashboard-kpis > button {
+  grid-template-columns: 38px minmax(0,1fr) !important;
+  gap: 9px !important;
+  min-height: 78px !important;
+  padding: 11px 12px !important;
+  border-radius: 13px !important;
+}
+.relationship-app.desktop-shell .kpi-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+}
+.relationship-app.desktop-shell .dashboard-kpis small {
+  font-size: 7px !important;
+}
+.relationship-app.desktop-shell .dashboard-kpis strong {
+  margin: 2px 0 !important;
+  font-size: 23px !important;
+}
+.relationship-app.desktop-shell .dashboard-kpis em {
+  font-size: 7px !important;
+}
+
+.relationship-app.desktop-shell .dashboard-main-grid {
+  grid-template-columns: minmax(0,1.25fr) minmax(330px,.75fr) !important;
+  gap: 10px !important;
+}
+.relationship-app.desktop-shell .dashboard-panel {
+  border-radius: 14px !important;
+}
+.relationship-app.desktop-shell .dashboard-panel-head {
+  min-height: 52px !important;
+  padding: 10px 12px !important;
+}
+.relationship-app.desktop-shell .panel-icon {
+  width: 30px !important;
+  height: 30px !important;
+}
+.relationship-app.desktop-shell .dashboard-panel-head strong {
+  font-size: 10px !important;
+}
+.relationship-app.desktop-shell .dashboard-panel-head small {
+  font-size: 7px !important;
+}
+.relationship-app.desktop-shell .priority-row {
+  min-height: 60px !important;
+  padding: 8px 11px !important;
+}
+.relationship-app.desktop-shell .dashboard-activity-list > button,
+.relationship-app.desktop-shell .capital-focus-list > button {
+  min-height: 52px !important;
+  padding: 8px 11px !important;
+}
+.relationship-app.desktop-shell .network-stat-stack button {
+  min-height: 51px !important;
+}
+.relationship-app.desktop-shell .activity-panel,
+.relationship-app.desktop-shell .capital-focus-panel {
+  min-height: 0 !important;
+}
+
+/* Compact desktop mode for zoomed/scaled Windows browsers. */
+@media (max-width: 1020px) {
+  .relationship-app.desktop-shell {
+    grid-template-columns: 72px minmax(0,1fr) !important;
+    min-width: 640px;
+  }
+  .relationship-app.desktop-shell .sidebar {
+    width: 72px !important;
+    padding: 14px 8px 12px !important;
+  }
+  .relationship-app.desktop-shell .brand {
+    justify-content: center !important;
+    padding: 2px 0 16px !important;
+  }
+  .relationship-app.desktop-shell .brand > div:nth-child(2) { display:none !important; }
+  .relationship-app.desktop-shell .brand-mark {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .relationship-app.desktop-shell .main-nav button,
+  .relationship-app.desktop-shell .settings-button {
+    justify-content: center !important;
+    min-height: 46px !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+  .relationship-app.desktop-shell .main-nav button > span { display:none !important; }
+  .relationship-app.desktop-shell .main-nav em {
+    position:absolute !important;
+    right:3px !important;
+    top:3px !important;
+    min-width:16px !important;
+    margin:0 !important;
+    padding:1px 4px !important;
+    font-size:6px !important;
+  }
+  .relationship-app.desktop-shell .sidebar-team {
+    padding: 12px 0 8px !important;
+  }
+  .relationship-app.desktop-shell .sidebar-team > span { display:none !important; }
+  .relationship-app.desktop-shell .sidebar-team button {
+    grid-template-columns: 30px !important;
+    justify-content:center !important;
+    padding:5px !important;
+  }
+  .relationship-app.desktop-shell .sidebar-team button strong,
+  .relationship-app.desktop-shell .sidebar-team button svg { display:none !important; }
+
+  .relationship-app.desktop-shell .topbar {
+    padding-inline: 14px !important;
+  }
+  .relationship-app.desktop-shell .team-legend { display:none !important; }
+  .relationship-app.desktop-shell .main-content {
+    padding: 14px !important;
+  }
+  .relationship-app.desktop-shell .dashboard-intro {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:12px !important;
+  }
+  .relationship-app.desktop-shell .dashboard-intro-copy h1 {
+    font-size: 28px !important;
+    white-space: nowrap !important;
+  }
+  .relationship-app.desktop-shell .dashboard-intro-copy p {
+    max-width: 520px !important;
+    font-size: 10px !important;
+  }
+  .relationship-app.desktop-shell .dashboard-kpis {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  .relationship-app.desktop-shell .dashboard-main-grid {
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* Runtime mobile shell: mobile patterns are allowed only when React classified the device as mobile. */
+.relationship-app.mobile-shell {
+  display:block;
+}
